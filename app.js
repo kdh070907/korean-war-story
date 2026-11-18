@@ -64,6 +64,7 @@ const ICON = {
   group: '<circle cx="9" cy="9" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5M15.5 14.5c3 0 5.5 1.6 5.5 4.5"/>'
 };
 const svg = name => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON[name] || ""}</svg>`;
+const BACK = `<button class="back" aria-label="뒤로">${svg("back")}</button>`;
 
 /* ---------- 앱 목록 ---------- */
 const APPS = {
@@ -180,7 +181,7 @@ function makeView(cls, inner, opt = {}) {
   if (opt.navBg) el.style.setProperty("--nav-bg", opt.navBg);
   return el;
 }
-function push(entry) { viewsEl.appendChild(entry.el); stack.push(entry); chrome(); return entry; }
+function push(entry) { viewsEl.appendChild(entry.el); stack.push(entry); chrome(); if (stack.length > 1) arm(); return entry; }
 function removeEntry(entry, animate = true) {
   const i = stack.indexOf(entry); if (i < 0) return;
   stack.splice(i, 1);
@@ -407,7 +408,7 @@ const chatAvatar = (c, cls = "") =>
   c.id === "alert" ? iconAv("alert", "#e5484d", cls) : c.group ? iconAv("group", "#9aa3b5", cls) : avatar(c.title, cls);
 
 function chatList(app) {
-  const el = makeView("", `<header class="appbar big"><h1>${esc(appName(app))}</h1></header><div class="scroll"><div class="list"></div></div>`, { light: true });
+  const el = makeView("", `<header class="appbar big">${BACK}<h1>${esc(appName(app))}</h1></header><div class="scroll"><div class="list"></div></div>`, { light: true });
   const entry = { el, light: true, id: "list:" + app };
   entry.refresh = () => {
     const list = chats.filter(c => c.app === app).sort((a, b) => a.rank - b.rank);
@@ -469,7 +470,6 @@ function chatRoom(c) {
     `<button disabled aria-label="보내기">${svg("send")}</button></form>`, { light: true });
   const entry = { el, light: true, id: "chat:" + c.id };
   const sc = $(".scroll", el), box = $(".msgs", el), input = $("input", el), btn = $(".composer button", el);
-  $(".back", el).onclick = pop;
   entry.refresh = () => {
     c.unread = 0;
     box.innerHTML = renderMsgs(c);
@@ -562,6 +562,7 @@ function showAlert(ev) {
     `<div class="alertbox" role="alertdialog"><div class="hd">${svg("alert")}<div><b>${esc(level)}</b><small>${esc(ampm(now()))}</small></div></div>` +
     `<div class="bd">${esc(ev.text)}</div><div class="ft"><button>확인</button></div></div>`;
   overlayEl.hidden = false;
+  arm();
   st.stopSiren && st.stopSiren();
   st.stopSiren = siren(ev.sound === false ? 0 : (ev.sec || 6));
   vibrate([500, 200, 500, 200, 500, 200, 800]);
@@ -591,7 +592,7 @@ const KEYS = [["1", ""], ["2", "ABC"], ["3", "DEF"], ["4", "GHI"], ["5", "JKL"],
 function phoneApp(tab = "recent") {
   st.missedNew = 0;
   const el = makeView("",
-    `<header class="appbar big"><h1>전화</h1></header><div class="scroll pbody"></div>` +
+    `<header class="appbar big">${BACK}<h1>전화</h1></header><div class="scroll pbody"></div>` +
     `<nav class="tabs"><button data-t="keypad">키패드</button><button data-t="recent">최근기록</button><button data-t="contacts">연락처</button></nav>`,
     { light: true });
   const entry = { el, light: true, id: "phone" };
@@ -770,7 +771,7 @@ const bindArts = el => $$(".art, .breaking", el).forEach(b => {
 function newsHome() {
   st.newNews = 0;
   const el = makeView("portal",
-    `<div class="ptop"><div class="urlbar">${svg("lock")}<span>${esc(N.url || "")}</span></div>` +
+    `<div class="ptop"><div class="urlrow">${BACK}<div class="urlbar">${svg("lock")}<span>${esc(N.url || "")}</span></div></div>` +
     `<div class="psearch"><span class="logo">${esc(N.portal || "뉴스")}</span><form><input placeholder="검색어를 입력하세요" enterkeyhint="search"><button>검색</button></form></div>` +
     `<div class="ptabs"><button class="on">뉴스</button><button>연예</button><button>스포츠</button><button>경제</button><button>날씨</button></div></div>` +
     `<div class="scroll nbody"></div>`, { light: true });
@@ -797,7 +798,6 @@ function newsHome() {
 function searchView(q) {
   const el = makeView("portal",
     `<header class="appbar"><button class="back" aria-label="뒤로">${svg("back")}</button><h1>'${esc(q)}' 검색 결과</h1></header><div class="scroll"></div>`, { light: true });
-  $(".back", el).onclick = pop;
   const res = visibleArticles().filter(a => (a.title + " " + (a.body || []).join(" ")).includes(q));
   $(".scroll", el).innerHTML = st.down
     ? `<div class="empty">네트워크에 연결할 수 없습니다.<br>연결 상태를 확인해 주세요.</div>`
@@ -822,7 +822,6 @@ function articleView(a) {
     `<div class="cmts"><h3>댓글 ${cm.length}</h3>${cm.map(c =>
       `<div class="cmt"><div class="u">${esc(c.name)}</div><div class="c">${esc(c.text)}</div><div class="l">공감 ${Number(c.likes || 0).toLocaleString("ko-KR")}</div></div>`).join("") ||
       `<div class="empty" style="padding:24px 0">첫 댓글을 남겨 보세요.</div>`}</div></div>`, { light: true });
-  $(".back", el).onclick = pop;
   return push({ el, light: true, id: "article:" + a.id });
 }
 
@@ -833,7 +832,7 @@ const SC = S.school || {};
 function schoolHome() {
   st.newNotices = 0;
   const el = makeView("school",
-    `<div class="shd"><span class="emb">${esc((SC.name || "학").charAt(0))}</span><div><b>${esc(SC.name || "학교")}</b><small>모바일 학생 서비스</small></div></div>` +
+    `<div class="shd">${BACK}<span class="emb">${esc((SC.name || "학").charAt(0))}</span><div><b>${esc(SC.name || "학교")}</b><small>모바일 학생 서비스</small></div></div>` +
     `<div class="scroll"><div class="sect">공지사항</div><div class="list"></div></div>`, { sbBg: "#1f3a68", navBg: "#fff" });
   const entry = { el, navDark: true, id: "school" };
   entry.refresh = () => {
@@ -856,7 +855,6 @@ function noticeView(n) {
   const el = makeView("notice-v",
     `<header class="appbar"><button class="back" aria-label="뒤로">${svg("back")}</button><h1>공지사항</h1></header>` +
     `<div class="scroll notice"><h1>${esc(n.title)}</h1><div class="meta">${esc(n.dept || "")} · ${esc(n.date || "")}</div><div class="txt">${esc(n.body || "")}</div></div>`, { light: true });
-  $(".back", el).onclick = pop;
   return push({ el, light: true, id: "notice" });
 }
 
@@ -866,7 +864,7 @@ function noticeView(n) {
 function mapApp() {
   const M = S.map || {}, sh = M.shelters || [];
   const el = makeView("",
-    `<header class="appbar"><h1>${esc(M.title || "지도")}</h1></header>` +
+    `<header class="appbar">${BACK}<h1>${esc(M.title || "지도")}</h1></header>` +
     `<div class="mapbox">${sh.map(s => `<div class="pin" style="left:${s.x ?? 50}%;top:${s.y ?? 50}%"><i></i><span>${esc(s.name)}</span></div>`).join("")}` +
     `<div class="pin me" style="left:50%;top:56%"><i></i></div></div>` +
     `<div class="scroll"><div class="list">${sh.map((s, i) =>
@@ -882,7 +880,7 @@ const photoBg = p => p.img ? `background-image:url('${esc(p.img)}')` : `backgrou
 function galleryHome() {
   const albums = S.gallery || [];
   const el = makeView("gal",
-    `<header class="appbar big"><h1>갤러리</h1></header><div class="scroll"><div class="albums">${albums.map((a, i) =>
+    `<header class="appbar big">${BACK}<h1>갤러리</h1></header><div class="scroll"><div class="albums">${albums.map((a, i) =>
       `<button class="album" data-i="${i}"><div class="cv" style="${a.photos && a.photos[0] ? photoBg(a.photos[0]) : "background:#ddd"}"></div><b>${esc(a.album)}</b><small>${(a.photos || []).length}</small></button>`).join("")}</div></div>`,
     { light: true });
   $$(".album", el).forEach(b => { b.onclick = () => albumView(albums[+b.dataset.i]); });
@@ -894,7 +892,6 @@ function albumView(a) {
     `<header class="appbar"><button class="back" aria-label="뒤로">${svg("back")}</button><h1>${esc(a.album)}</h1></header>` +
     `<div class="scroll"><div class="photos">${ps.map((p, i) => `<button data-i="${i}" style="${photoBg(p)}" aria-label="${esc(p.caption || "사진")}"></button>`).join("")}</div></div>`,
     { light: true });
-  $(".back", el).onclick = pop;
   $$(".photos button", el).forEach(b => { b.onclick = () => photoView(ps[+b.dataset.i]); });
   return push({ el, light: true, id: "album" });
 }
@@ -903,14 +900,13 @@ function photoView(p) {
     `<header class="appbar"><button class="back" aria-label="뒤로">${svg("back")}</button><h1></h1></header>` +
     `<div class="ph"><div style="${photoBg(p)}">${p.img ? "" : esc(p.caption || "")}</div></div><div class="cap">${esc(p.caption || "")}</div>`,
     { sbBg: "#000" });
-  $(".back", el).onclick = pop;
   return push({ el, id: "photo" });
 }
 
 function memoList() {
   const ms = S.memos || [];
   const el = makeView("memo",
-    `<header class="appbar big"><h1>메모</h1></header><div class="scroll"><div class="list">${ms.map((m, i) =>
+    `<header class="appbar big">${BACK}<h1>메모</h1></header><div class="scroll"><div class="list">${ms.map((m, i) =>
       `<button class="row" data-i="${i}"><span class="mid"><div class="nm">${esc(m.title)}</div><div class="pv">${esc(m.date || "")} · ${esc(String(m.text || "").split("\n")[0])}</div></span></button>`).join("")}</div></div>`,
     { light: true });
   $$(".row", el).forEach(b => { b.onclick = () => memoView(ms[+b.dataset.i]); });
@@ -921,7 +917,6 @@ function memoView(m) {
     `<header class="appbar"><button class="back" aria-label="뒤로">${svg("back")}</button><h1>메모</h1></header>` +
     `<div class="scroll memotxt"><h1>${esc(m.title)}</h1><small>${esc(m.date || "")}</small><p>${esc(m.text || "")}</p></div>`,
     { light: true });
-  $(".back", el).onclick = pop;
   return push({ el, light: true, id: "memo-v" });
 }
 
@@ -1020,17 +1015,45 @@ function tickBattery() {
 /* =========================================================
    시작
    ========================================================= */
+/* ---------- 뒤로가기 ----------
+   화면 속 ← 버튼, 아래 버튼줄의 <, 키보드 Esc,
+   그리고 실제 휴대폰의 뒤로가기(브라우저 뒤로)가 모두 같은 동작을 합니다. */
+function goBack() {
+  if (!overlayEl.hidden) { $("button", overlayEl).click(); return true; }   // 재난문자 닫기
+  const t = top();
+  if (!t || st.off || t.intro || t.lock) return false;
+  if (t.call) return true;                                                // 통화 중에는 무시
+  if (stack.length > 1) { pop(); return true; }
+  return false;                                                           // 홈 화면
+}
+// 브라우저 기록에 "가짜 한 칸"을 두어, 휴대폰 뒤로가기를 누르면 사이트를 나가지 않고 이 함수가 받게 함
+let guarded = false;
+function arm() {
+  if (guarded) return;
+  try { history.pushState({ phone: true }, ""); guarded = true; } catch (e) {}
+}
+addEventListener("popstate", () => {
+  guarded = false;
+  goBack();
+  const t = top();
+  if (stack.length > 1 || !overlayEl.hidden || (t && t.call)) arm();
+});
+viewsEl.addEventListener("click", e => {
+  if (e.target.closest(".back")) { e.preventDefault(); goBack(); }
+});
+
 navEl.onclick = e => {
   const b = e.target.closest("[data-nav]");
-  const t = top();
-  if (!b || st.off || !t || t.lock || t.call || t.intro || !overlayEl.hidden) return;
+  if (!b) return;
   const k = b.dataset.nav;
-  if (k === "back") pop();
-  else if (k === "home") popTo(x => x.home);
+  if (k === "back") { goBack(); return; }
+  const t = top();
+  if (st.off || !t || t.lock || t.call || t.intro || !overlayEl.hidden) return;
+  if (k === "home") popTo(x => x.home);
   else toast("최근 실행한 앱이 없습니다.");
 };
 addEventListener("keydown", e => {
-  if (e.key === "Escape" && !e.target.closest("input")) $('[data-nav="back"]', navEl).click();
+  if (e.key === "Escape" && !e.target.closest("input")) goBack();
 });
 
 function fit() {
