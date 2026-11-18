@@ -113,7 +113,7 @@ const st = {
   newNews: 0, newNotices: 0,
   lockNotis: [],
   locked: true, started: false, off: false,
-  inCall: false, callCount: {}, rankSeq: 0,
+  inCall: false, callEndedAt: 0, callCount: {}, rankSeq: 0,
   nextDrain: 0, stopSiren: null
 };
 
@@ -646,7 +646,7 @@ function call(target) {
   callScreen({ who, script: sc || {}, incoming: false });
 }
 
-function callScreen({ who, script, incoming, ring }) {
+function callScreen({ who, script, incoming, ring, onMiss }) {
   st.inCall = true;
   const disp = who.name || who.number;
   const el = makeView("callscr",
@@ -657,7 +657,7 @@ function callScreen({ who, script, incoming, ring }) {
   let stopRing = null, timerInt = null, connectedAt = null, finished = false;
   const entry = {
     el, call: true, noNav: true,
-    onClose: () => { tok.dead = true; stopRing && stopRing(); clearInterval(timerInt); st.inCall = false; }
+    onClose: () => { tok.dead = true; stopRing && stopRing(); clearInterval(timerInt); st.inCall = false; st.callEndedAt = Date.now(); }
   };
   const stEl = $(".st", el), sub = $(".sub", el), btns = $(".btns", el);
   const wait = async ms => { await sleep(ms); if (tok.dead) throw tok; };
@@ -733,6 +733,14 @@ function callScreen({ who, script, incoming, ring }) {
       line("상대방이 통화를 끊었습니다.", "sys");
       await wait(1200);
       return finish("in");
+    }
+    // 안 받거나 거절하면: 잠시 뒤 그 사람이 문자를 보냄 (ifMissed)
+    if (onMiss && onMiss.text) {
+      setTimeout(() => {
+        const from = onMiss.from || disp;
+        const c = chatById(onMiss.chat) || newChat({ chat: onMiss.chat || disp, from });
+        receive(c, { from, text: onMiss.text });
+      }, 4000);
     }
     if (choice === "no") return finish("rejected", { quiet: true });
     finish("missed", { quiet: true });
@@ -941,7 +949,10 @@ function shutdown() {
    시간 흐름 (timeline)
    ========================================================= */
 let tlStart = 0;
-const timeline = (S.timeline || []).map(e => ({ ...e })).sort((a, b) => a.at - b.at);
+// at: 90 (초) 또는 "1:30" (분:초)
+const CALL_GAP_MS = 20000;
+const toSec = v => typeof v === "string" && v.includes(":") ? v.split(":").reduce((a, x) => a * 60 + Number(x), 0) : Number(v) || 0;
+const timeline = (S.timeline || []).map(e => ({ ...e, at: toSec(e.at) })).sort((a, b) => a.at - b.at);
 const elapsed = () => (Date.now() - tlStart) / 1000 * SPEED;
 
 function newChat(ev) {
@@ -960,7 +971,7 @@ function runEvent(ev) {
     }
     case "alert": showAlert(ev); break;
     case "call":
-      callScreen({ who: resolve(ev.from || ev.number), script: { lines: ev.lines || [] }, incoming: true, ring: ev.ring });
+      callScreen({ who: resolve(ev.from || ev.number), script: { lines: ev.lines || [] }, incoming: true, ring: ev.ring, onMiss: ev.ifMissed });
       break;
     case "news": {
       const a = st.articles.find(x => x.id === ev.id); if (!a) break;
@@ -995,7 +1006,8 @@ function tickTimeline() {
   const t = elapsed();
   for (const ev of timeline) {
     if (ev.done || ev.at > t) continue;
-    if (ev.type === "call" && st.inCall) continue;      // 통화가 끝나면 이어서
+    // 통화 중이거나 방금 끊었으면(20초) 다음 전화는 잠시 미룸 — 전화가 연달아 몰리지 않게
+    if (ev.type === "call" && (st.inCall || Date.now() - st.callEndedAt < CALL_GAP_MS)) continue;
     ev.done = true;
     try { runEvent(ev); } catch (e) { console.error("timeline 오류:", ev, e); }
   }

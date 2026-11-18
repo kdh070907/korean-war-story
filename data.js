@@ -15,7 +15,7 @@ window.STORY = {
     date: "2027-03-13",             // 휴대폰 속 날짜 (YYYY-MM-DD)
     time: "02:47:00",               // 처음 열었을 때 휴대폰 시각. 이후 실제 시간만큼 흘러감
     battery: 23,                    // 시작 배터리 %
-    batteryDrainSec: 50,            // 몇 초마다 1%씩 줄어드는지 (0 이면 안 줄어듦). 0%가 되면 전원이 꺼짐
+    batteryDrainSec: 35,            // 몇 초마다 1%씩 줄어드는지 (0 이면 안 줄어듦). 0%가 되면 전원이 꺼짐
     signal: 3,                      // 신호 세기 0~4
     network: "LTE",                 // 상태표시줄에 보이는 망 이름
     wallpaper: "",                  // 배경화면 사진 경로 (예: "img/wallpaper.jpg"). 비우면 기본 배경
@@ -293,30 +293,61 @@ window.STORY = {
   ],
 
   /* ───────────── 시간이 흐르며 일어나는 일 ─────────────
-     at: "휴대폰 열기"를 누른 뒤 몇 초 후에 일어나는지
+     at: "휴대폰 열기"를 누른 뒤 언제 일어나는지. "1:30"(1분 30초) 또는 90(초) 둘 다 됩니다.
      type 종류
        message : 메신저/문자 도착   { chat: "대화방 id", from: "보낸 사람", text: "…" }
-       alert   : 긴급재난문자 (사이렌 + 전체 화면) { text: "…" }
-       call    : 전화가 걸려 옴      { from: "이름", lines: [...대사], ring: 20000 }
+       alert   : 긴급재난문자 (사이렌 + 전체 화면) { text: "…", title: "위급재난문자", sound: false(소리 끄기) }
+       call    : 전화가 걸려 옴      { from: "이름", lines: [...대사], ring: 20000(울리는 시간) }
+                 ifMissed: { chat: "대화방 id", text: "…" } → 전화를 안 받거나 거절하면 그 사람이 보내는 문자
        news    : 숨겨 둔 기사 공개   { id: "기사 id" }
        notice  : 학교 공지 추가      { title, dept, body, important }
        network : 망 상태 변경        { signal: 0~4, label: "LTE", down: true/false }
        trending: 실시간 검색어 교체  { list: [...] }
-       battery : 배터리 값 변경      { value: 5 } */
+       battery : 배터리 값 변경      { value: 5 }
+     · 배터리(23%, 35초마다 1%)는 약 13분 뒤 꺼집니다. 이야기 길이에 맞춰 settings 에서 조절하세요. */
   timeline: [
-    { at: 6,   type: "message", chat: "dept", from: "이현우", text: "지금 또 울린다" },
-    { at: 10,  type: "message", chat: "dept", from: "최수아", text: "다들 어디로 대피함?" },
-    { at: 16,  type: "alert", text: "[국가비상대책본부] 02:50 수도권 전역 공습경보 발령. 즉시 가까운 지하 대피시설로 대피하십시오. 엘리베이터 사용 금지." },
-    { at: 30,  type: "message", chat: "mom", from: "엄마", text: "지우야 제발" },
-    { at: 42,  type: "call", from: "아빠", ring: 15000,
-      lines: ["지우야! 아빠야", { me: "아빠!" }, "다친 데 없지? 지금 어디야", { me: "자취방이야" }, "가까운 지하철역으로 가. 지금 바로.", { wait: 1200 }, "엄마랑 지민이는 괜찮", { wait: 800 }, "…"] },
-    { at: 70,  type: "news", id: "a3" },
-    { at: 85,  type: "notice", title: "[긴급] 휴교 및 기숙사 지하 대피 안내", dept: "총장실", important: true,
+    // ── 0분대: 깨어나자마자 ──
+    { at: "0:08", type: "message", chat: "dept", from: "이현우", text: "지금 또 울린다" },
+    { at: "0:14", type: "message", chat: "dept", from: "최수아", text: "다들 어디로 대피함?" },
+    { at: "0:25", type: "alert", text: "[국가비상대책본부] 02:50 수도권 전역 공습경보 발령. 즉시 가까운 지하 대피시설로 대피하십시오. 엘리베이터 사용 금지." },
+    { at: "0:50", type: "message", chat: "mom", from: "엄마", text: "지우야 제발" },
+
+    // ── 1분대: 엄마 전화 ──
+    { at: "1:15", type: "call", from: "엄마", ring: 20000,
+      lines: ["지우야!! 지우야, 엄마야", { me: "엄마, 나 괜찮아" }, "아이고… 다행이다… 지금 어디야", { me: "자취방. 밖에 사이렌 계속 울려" },
+              "문 꼭 잠그고, 물이랑 보조배터리 챙겨", "아빠가 그쪽으로 간다는데 길이 다 막혔대", { wait: 1200 }, "지우야? 엄마 말 들려? 여보세요?", { wait: 1500 }],
+      ifMissed: { chat: "mom", text: "왜 안 받아… 제발 받아" } },
+    { at: "1:50", type: "news", id: "a3" },
+
+    // ── 2분대 ──
+    { at: "2:20", type: "notice", title: "[긴급] 휴교 및 기숙사 지하 대피 안내", dept: "총장실", important: true,
       body: "교육부 휴교령에 따라 오늘부로 휴교합니다.\n기숙사생은 사감의 안내에 따라 지하 시설로 이동하십시오." },
-    { at: 100, type: "message", chat: "yerin", from: "예린", text: "지우야 답장 좀" },
-    { at: 120, type: "network", signal: 1, label: "3G" },
-    { at: 125, type: "trending", list: ["통신 장애", "대피소 위치", "공습경보 해제", "휴교령", "기숙사 대피", "예비군 소집", "지하철 운행 중단", "환율", "생수", "정전"] },
-    { at: 150, type: "message", chat: "family", from: "아빠", text: "지우 연락 오면 바로 알려" },
-    { at: 180, type: "network", signal: 0, label: "", down: true }
+    { at: "2:45", type: "message", chat: "yerin", from: "예린", text: "지우야 답장 좀" },
+
+    // ── 3분대: 동생 전화 ──
+    { at: "3:20", type: "call", from: "지민(동생)", ring: 20000,
+      lines: ["누나…", { me: "지민아! 괜찮아?" }, "응… 지금 엄마랑 아파트 지하주차장이야", "사람들 엄청 많아. 다들 휴대폰만 보고 있어",
+              { me: "엄마 옆에 꼭 붙어 있어" }, "누나는 언제 와?", { wait: 1500 }, { me: "…길 열리면 바로 갈게" }, "약속한 거다", { wait: 800 }],
+      ifMissed: { chat: "family", text: "누나 왜 전화 안 받아" } },
+    { at: "4:00", type: "message", chat: "family", from: "엄마", text: "엄마랑 지민이는 아파트 지하주차장이야" },
+    { at: "4:10", type: "message", chat: "family", from: "아빠", text: "아빠는 지우 쪽으로 가는 중. 길이 다 막혔다" },
+    { at: "4:40", type: "network", signal: 2, label: "3G" },
+
+    // ── 5분대: 아빠 전화 ──
+    { at: "5:20", type: "call", from: "아빠", ring: 20000,
+      lines: ["지우야! 아빠야", { me: "아빠!" }, "다친 데 없지? 지금 어디야", { me: "자취방이야" }, "가까운 지하철역으로 가. 지금 바로.", { wait: 1200 }, "엄마랑 지민이는 괜찮", { wait: 800 }, "…"],
+      ifMissed: { chat: "family", text: "지우야 전화 좀 받아라" } },
+    { at: "6:00", type: "trending", list: ["통신 장애", "대피소 위치", "공습경보", "휴교령", "기숙사 대피", "예비군 소집", "지하철 운행 중단", "환율", "생수", "정전"] },
+    { at: "6:30", type: "message", chat: "dept", from: "김도윤", text: "학교 앞 역 들어갈 수 있음? 사람 너무 많대" },
+
+    // ── 7분대: 엄마 전화 (잘 안 들림) ──
+    { at: "7:30", type: "network", signal: 1, label: "3G" },
+    { at: "7:40", type: "call", from: "엄마", ring: 15000,
+      lines: ["지우야? …들려?", { me: "엄마! 응, 들려!" }, "…역으로 …지금 바로…", { wait: 1500 }, "…ㅇ…", { wait: 1500 }],
+      ifMissed: { chat: "mom", text: "전화가 자꾸 끊겨" } },
+    { at: "8:20", type: "message", chat: "family", from: "아빠", text: "지우 연락 오면 바로 알려" },
+
+    // ── 9분: 망이 끊김 (이후 문자·전화 불가) ──
+    { at: "9:00", type: "network", signal: 0, label: "", down: true }
   ]
 };
