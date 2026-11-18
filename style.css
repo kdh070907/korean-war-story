@@ -6,8 +6,9 @@
           "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
   --sb-h: 30px;         /* 상태표시줄 높이 */
   --nav-h: 44px;        /* 아래 버튼줄 높이 */
-  --accent: #4f6bed;
-  --danger: #e5484d;
+  --accent: #a6192e;        /* 대표색: 경희 크림슨 */
+  --accent-soft: #fbeaec;   /* 대표색 옅은 배경 */
+  --danger: #e5484d;        /* 위험·배지: 대표색보다 밝은 빨강 */
   --ok: #2fb35a;
   --line: rgba(0,0,0,.08);
   --muted: #7b8190;
@@ -263,7 +264,7 @@ svg { display: block; }
 .list .row + .row { border-top: 1px solid #f0f1f4; }
 
 /* ---------- 대화방 ---------- */
-.room { background: #dfe6ee; }
+.room { background: #e9e5e6; }
 .room.sms { background: #fff; }
 .msgs { padding: 10px 12px 16px; display: flex; flex-direction: column; gap: 4px; }
 .dayline { align-self: center; margin: 12px 0 6px; padding: 4px 12px; border-radius: 999px; background: rgba(0,0,0,.12); color: #fff; font-size: 12px; }
@@ -281,7 +282,7 @@ svg { display: block; }
 }
 .m.me .bub { background: var(--accent); color: #fff; border-top-left-radius: 16px; border-top-right-radius: 5px; }
 .room.sms .bub { background: #eef0f3; }
-.room.sms .m.me .bub { background: #3b82f6; }
+.room.sms .m.me .bub { background: var(--accent); }
 .room.sms.alertroom .bub { background: #fdecec; border: 1px solid #f4c7c8; }
 .m .meta { display: flex; flex-direction: column; align-items: flex-end; font-size: 10.5px; color: #6b7280; flex: none; padding-bottom: 2px; gap: 1px; }
 .m:not(.me) .meta { align-items: flex-start; }
@@ -345,7 +346,7 @@ svg { display: block; }
   overflow: hidden;
 }
 .callscr .ln { font-size: 17px; line-height: 1.5; animation: notiIn .3s ease; }
-.callscr .ln.me { color: #9fb4ff; }
+.callscr .ln.me { color: #ff9aa8; }
 .callscr .ln.sys { font-size: 15px; color: #c5cad6; white-space: pre-line; }
 .callscr .ln.old { opacity: .35; }
 .callscr .btns { display: flex; justify-content: center; gap: 80px; padding-bottom: 34px; }
@@ -445,7 +446,7 @@ svg { display: block; }
 .cmt .l { margin-top: 4px; font-size: 12px; color: var(--muted); }
 
 /* ---------- 학교 앱 ---------- */
-.school .shd { flex: none; background: linear-gradient(160deg, #1f3a68, #142748); color: #fff; padding: 20px 20px 22px; display: flex; align-items: center; gap: 14px; }
+.school .shd { flex: none; background: linear-gradient(160deg, #a6192e, #6e0f1c); color: #fff; padding: 20px 20px 22px; display: flex; align-items: center; gap: 14px; }
 .school .emb { width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,.15); display: grid; place-items: center; font-weight: 800; font-size: 20px; }
 .school .shd b { font-size: 19px; display: block; }
 .school .shd small { opacity: .75; font-size: 12.5px; }
@@ -459,7 +460,7 @@ svg { display: block; }
 
 /* ---------- 지도 ---------- */
 .mapbox {
-  position: relative; flex: none; height: 46%;
+  position: relative; flex: none; height: 38%;
   background:
     linear-gradient(90deg, transparent 47%, #fff 47%, #fff 53%, transparent 53%) 0 0 / 120px 100%,
     linear-gradient(0deg, transparent 46%, #fff 46%, #fff 54%, transparent 54%) 0 0 / 100% 96px,
@@ -469,10 +470,11 @@ svg { display: block; }
 }
 .mapbox::before { content: ""; position: absolute; left: -10%; top: 60%; width: 120%; height: 34px; background: #b9d7f0; transform: rotate(-8deg); }
 .pin { position: absolute; transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; }
-.pin i { width: 26px; height: 26px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: #2f9e44; box-shadow: 0 3px 8px rgba(0,0,0,.25); display: block; }
-.pin.me i { width: 18px; height: 18px; border-radius: 50%; transform: none; background: var(--accent); border: 3px solid #fff; box-shadow: 0 0 0 8px rgba(79,107,237,.2); }
+.pin i { width: 26px; height: 26px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: #2f9e44; box-shadow: 0 3px 8px rgba(0,0,0,.25); display: grid; place-items: center; }
+.pin i b { transform: rotate(45deg); color: #fff; font-size: 12px; font-weight: 800; font-style: normal; }
+.pin.me i { width: 18px; height: 18px; border-radius: 50%; transform: none; background: var(--accent); border: 3px solid #fff; box-shadow: 0 0 0 8px rgba(166,25,46,.2); }
 .pin span { margin-top: 4px; font-size: 11px; font-weight: 700; background: #fff; padding: 2px 6px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,.15); white-space: nowrap; }
-.shel .ic2 { width: 40px; height: 40px; border-radius: 12px; background: #e6f6ea; color: #2f9e44; display: grid; place-items: center; font-weight: 800; flex: none; }
+.shel .ic2 { width: 34px; height: 34px; border-radius: 50%; background: #e6f6ea; color: #2f9e44; display: grid; place-items: center; font-weight: 800; flex: none; }
 
 /* ---------- 갤러리 ---------- */
 .gal { background: #fff; }
@@ -505,3 +507,70 @@ svg { display: block; }
 .newtag { display: inline-grid; place-items: center; width: 16px; height: 16px; margin-right: 6px; border-radius: 4px; background: var(--danger); color: #fff; font-size: 10px; font-style: normal; font-weight: 800; vertical-align: 1px; }
 .replay { color: #666; font-size: 13px; padding: 10px 16px; }
 .school .shd .back { width: 38px; height: 38px; margin: 0 -6px 0 -12px; display: grid; place-items: center; color: #fff; flex: none; }
+
+/* ---------- 지도: 출처 · 실제 위치 ---------- */
+.mapsrc { flex: none; padding: 7px 14px; font-size: 11px; line-height: 1.4; color: #8a8f99; background: #fff; border-bottom: 1px solid var(--line); }
+.row.shel { padding: 0 14px 0 0; gap: 6px; }
+.shel-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 11px 0 11px 18px; text-align: left; }
+.shel-main:active { background: #eef0f4; }
+.shel .nm { white-space: normal; font-size: 14.5px; line-height: 1.35; }
+.shel .pv { white-space: normal; font-size: 12.5px; line-height: 1.4; }
+.realpos {
+  flex: none; padding: 6px 9px; border-radius: 8px;
+  border: 1px solid var(--accent); color: var(--accent); background: #fff;
+  font-size: 11.5px; font-weight: 700; text-decoration: none; white-space: nowrap;
+}
+.realpos:active { background: var(--accent-soft); }
+
+/* ---------- 사진 말풍선 ---------- */
+.bub.photo {
+  width: 210px; max-width: 100%; aspect-ratio: 1; padding: 0;
+  border-radius: 14px; overflow: hidden;
+  display: grid; place-items: center;
+  background-size: cover; background-position: center;
+}
+.m.me .bub.photo, .m .bub.photo { border-radius: 14px; }
+.bub.photo span { padding: 4px 10px; border-radius: 999px; background: rgba(0,0,0,.28); color: #fff; font-size: 12.5px; }
+
+/* ---------- 알림톡 ---------- */
+.m.alim .stack { max-width: 80%; width: 80%; }
+.bub.alim { padding: 0; overflow: hidden; background: #fff; width: 100%; }
+.alimhd { background: #ffe14d; color: #3a3000; font-size: 11.5px; font-weight: 800; padding: 6px 12px; }
+.alimbd { padding: 12px 13px 10px; font-size: 13.5px; line-height: 1.55; white-space: pre-wrap; }
+.alimbtn { display: block; width: calc(100% - 24px); margin: 0 12px 12px; padding: 10px; border: 1px solid #d9dbe0; border-radius: 8px; background: #fff; font-size: 13.5px; font-weight: 600; }
+.alimbtn:active { background: #f3f4f6; }
+.noinput { flex: none; padding: 14px; background: #f1f2f4; border-top: 1px solid var(--line); color: #8a8f99; font-size: 13.5px; text-align: center; }
+
+/* ---------- 걸려 오는 전화: 화면 위 배너 ---------- */
+.callbar {
+  position: absolute; z-index: 75; left: 8px; right: 8px; top: calc(var(--sb-h) + 4px);
+  animation: bannerIn .35s cubic-bezier(.2,.8,.2,1);
+}
+.callbar.out { animation: bannerOut .25s ease-in forwards; }
+.cb-card {
+  padding: 12px 12px 12px 14px; border-radius: 22px;
+  background: rgba(24,26,33,.94); color: #fff;
+  box-shadow: 0 12px 32px rgba(0,0,0,.4);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+}
+.cb-row { display: flex; align-items: center; gap: 11px; min-height: 48px; }
+.cb-info { flex: 1; min-width: 0; }
+.cb-info b { display: block; font-size: 16px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cb-st { font-size: 12.5px; opacity: .72; font-variant-numeric: tabular-nums; }
+.cb-card.ended .cb-st { color: #ff8b8b; opacity: 1; }
+.cb-btns { display: flex; gap: 10px; flex: none; }
+.cb-btn { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: #fff; }
+.cb-btn svg { width: 21px; height: 21px; fill: currentColor; }
+.cb-btn.yes { background: var(--ok); }
+.cb-btn.no, .cb-btn.end { background: var(--danger); }
+.cb-btn.no svg, .cb-btn.end svg { transform: rotate(135deg); }
+.cb-card.ringing .cb-btn.yes { animation: ringPulse 1.2s ease-out infinite; }
+.cb-card.ringing .av { animation: ringShake 1.2s ease-in-out infinite; }
+@keyframes ringPulse { 0% { box-shadow: 0 0 0 0 rgba(47,179,90,.6); } 70%, 100% { box-shadow: 0 0 0 11px rgba(47,179,90,0); } }
+@keyframes ringShake { 0%, 50%, 100% { transform: none; } 10%, 30% { transform: rotate(-9deg); } 20%, 40% { transform: rotate(9deg); } }
+.cb-sub { display: flex; flex-direction: column; gap: 3px; }
+.cb-sub:not(:empty) { margin-top: 9px; padding-top: 9px; border-top: 1px solid rgba(255,255,255,.1); }
+.cb-sub .ln { font-size: 14px; line-height: 1.45; animation: notiIn .25s ease; }
+.cb-sub .ln.me { color: #ff9aa8; }
+.cb-sub .ln.sys { color: #b9bfcc; font-size: 13px; }
+.cb-sub .ln.old { opacity: .45; font-size: 13px; }

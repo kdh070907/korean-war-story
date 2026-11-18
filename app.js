@@ -72,7 +72,7 @@ const APPS = {
   talk:     { name: "톡",     icon: "talk",     bg: "linear-gradient(160deg,#8b6dff,#5a3be0)", open: () => chatList("talk") },
   sms:      { name: "메시지", icon: "sms",      bg: "linear-gradient(160deg,#5b9bff,#2d63e0)", open: () => chatList("sms") },
   news:     { name: (S.news && S.news.portal) || "뉴스", icon: "news", bg: "linear-gradient(160deg,#ff7b5c,#e5482b)", open: () => newsHome() },
-  school:   { name: "학교",   icon: "school",   bg: "linear-gradient(160deg,#2c5291,#142748)", open: () => schoolHome() },
+  school:   { name: "학교",   icon: "school",   bg: "linear-gradient(160deg,#c0283a,#6e0f1c)", open: () => schoolHome() },
   map:      { name: "지도",   icon: "map",      bg: "linear-gradient(160deg,#22c3b3,#0e8c80)", open: () => mapApp() },
   gallery:  { name: "갤러리", icon: "gallery",  bg: "linear-gradient(160deg,#f783ac,#d6336c)", open: () => galleryHome() },
   memo:     { name: "메모",   icon: "memo",     bg: "linear-gradient(160deg,#ffd43b,#f59f00)", open: () => memoList() },
@@ -93,11 +93,29 @@ const iconAv = (icon, bg, cls = "") => `<span class="av ${cls}" style="backgroun
 /* =========================================================
    상태
    ========================================================= */
-const chats = [...(S.chats || []), ...(S.sms || [])].map((c, i) => ({
+const chats = [...(S.chats || []), ...(S.sms || [])].map(c => ({
   app: "talk", replies: [], ...c,
-  messages: (c.messages || []).map(m => ({ ...m, read: !c.neverRead })),
-  unread: c.unread || 0, sent: 0, rank: i, typing: false
+  // 메시지에 read 가 적혀 있으면 그걸 우선 (예: 태호 방 전날까지 읽음)
+  messages: (c.messages || []).map(m => ({ ...m, read: m.read ?? !c.neverRead })),
+  unread: c.unread || 0, sent: 0, rank: 0, typing: false, ruleIdx: {}
 }));
+/* 방 목록은 최근 메시지 순. 날짜 구분선("3월 12일", "2026년 11월 17일")과 time 으로 시각을 계산 */
+const DEFAULT_YEAR = +String(CFG.date || "2027").slice(0, 4);
+function lastStamp(msgs) {
+  let y = DEFAULT_YEAR, mo = 0, d = 0, last = null;
+  for (const m of msgs) {
+    if (m.day) {
+      const r = /(?:(\d{4})년\s*)?(\d{1,2})월\s*(\d{1,2})일/.exec(m.day);
+      if (r) { y = r[1] ? +r[1] : DEFAULT_YEAR; mo = +r[2]; d = +r[3]; }
+    } else last = { y, mo, d, time: m.time };
+  }
+  if (!last) return 0;
+  const tm = /^(\d{1,2}):(\d{2})$/.exec(last.time || "") || [0, 0, 0];
+  const base = last.mo ? new Date(last.y, last.mo - 1, last.d) : new Date(T0_PHONE);
+  base.setHours(+tm[1], +tm[2], 0, 0);
+  return base.getTime();
+}
+[...chats].sort((a, b) => lastStamp(b.messages) - lastStamp(a.messages)).forEach((c, i) => { c.rank = i; });
 const chatById = id => chats.find(c => c.id === id);
 
 const st = {
@@ -169,7 +187,8 @@ const vibrate = p => { try { navigator.vibrate && navigator.vibrate(p); } catch 
    화면 쌓기 (뷰 스택)
    ========================================================= */
 const viewsEl = $("#views"), sbEl = $("#statusbar"), navEl = $("#navbar"), bannerEl = $("#banner"),
-      overlayEl = $("#overlay"), toastEl = $("#toast"), screenEl = $("#screen"), device = $("#device");
+      overlayEl = $("#overlay"), toastEl = $("#toast"), screenEl = $("#screen"), device = $("#device"),
+      callbarEl = $("#callbar");
 const stack = [];
 const top = () => stack[stack.length - 1];
 
@@ -244,6 +263,7 @@ function showBanner(n) {
   const seq = ++bannerSeq;
   bannerEl.innerHTML = ncardHTML(n);
   bannerEl.classList.remove("out"); bannerEl.hidden = false;
+  layoutBanner();
   bannerEl.style.animation = "none"; void bannerEl.offsetWidth; bannerEl.style.animation = "";
   $(".ncard", bannerEl).onclick = () => { hideBanner(true); n.open && n.open(); };
   clearTimeout(bannerT);
@@ -266,7 +286,7 @@ function notify(n) {
   ding();
   if (st.locked) { addLockNoti(n); return; }
   const t = top();
-  if (t && t.call) return;                    // 통화 중에는 배너를 띄우지 않음
+  if (t && t.call) return;                    // 전체 화면 발신 통화 중에는 배너를 띄우지 않음
   showBanner(n);
 }
 
@@ -304,7 +324,7 @@ function seedLockNotis() {
     items.push({
       key: "chat:" + c.id, app: c.id === "alert" ? "alert" : c.app,
       title: c.group ? c.title : c.title,
-      text: l ? (c.group && l.from ? `${l.from}: ${l.text}` : l.text) : "",
+      text: l ? (c.group && l.from ? `${l.from}: ${previewOf(l)}` : previewOf(l)) : "",
       count: c.unread, when: fmtTime(l && l.time), sort: (l && l.time) || "",
       open: () => openChat(c)
     });
@@ -393,6 +413,8 @@ function openApp(id) {
    메신저 · 문자
    ========================================================= */
 const bump = c => { c.rank = -(++st.rankSeq); };
+const isPhoto = m => !!(m && (m.photo || m.img));
+const previewOf = m => (m ? (isPhoto(m) ? "사진" : (m.text || "")) : "");
 
 function chatTimeLabel(c) {
   let lastDay = null, last = null;
@@ -415,7 +437,7 @@ function chatList(app) {
     $(".list", el).innerHTML = list.map(c => {
       const l = lastMsg(c);
       return `<button class="row" data-id="${esc(c.id)}">${chatAvatar(c)}<span class="mid"><div class="nm">${esc(c.title)}</div>` +
-        `<div class="pv">${esc(l ? l.text : "")}</div></span><span class="rt"><span>${esc(chatTimeLabel(c))}</span>` +
+        `<div class="pv">${esc(previewOf(l))}</div></span><span class="rt"><span>${esc(chatTimeLabel(c))}</span>` +
         `${c.unread ? `<i class="badge sm">${c.unread > 99 ? "99+" : c.unread}</i>` : ""}</span></button>`;
     }).join("") || `<div class="empty">대화가 없습니다.</div>`;
     $$(".row", el).forEach(b => { b.onclick = () => openChat(chatById(b.dataset.id)); });
@@ -432,6 +454,19 @@ function openChat(c) {
   chatRoom(c);
 }
 
+/* 말풍선 한 개: 사진 / 알림톡(button) / 글자 */
+function bubbleHTML(m, i) {
+  if (isPhoto(m)) {
+    const bg = m.img ? `background-image:url('${esc(m.img)}')` : `background-color:${esc(m.color || "#8a8f99")}`;
+    return `<button class="bub photo" data-photo="${i}" style="${bg}" aria-label="${esc(m.photo || "사진")}">${m.img ? "" : `<span>${esc(m.photo)}</span>`}</button>`;
+  }
+  if (m.button || m.alimtalk) {
+    return `<div class="bub alim"><div class="alimhd">알림톡</div><div class="alimbd">${esc(m.text)}</div>` +
+      `${m.button ? `<button class="alimbtn">${esc(m.button)}</button>` : ""}</div>`;
+  }
+  return `<div class="bub">${esc(m.text)}</div>`;
+}
+
 function renderMsgs(c) {
   const ms = c.messages;
   const who = x => (x.me ? "@me" : (x.from || c.title));
@@ -442,15 +477,15 @@ function renderMsgs(c) {
     const same = x => x && !x.day && who(x) === sender;
     const cont = same(prev);
     const time = same(next) && next.time === m.time ? "" : `<span>${esc(fmtTime(m.time))}</span>`;
-    const fresh = m.fresh ? "new" : "";
+    const cls = `${m.fresh ? "new" : ""} ${m.button || m.alimtalk ? "alim" : ""}`;
     if (m.me) {
       const mark = m.failed ? `<span class="fail">! 전송 실패</span>` : (!m.read ? `<span class="rd">1</span>` : "");
-      out += `<div class="m me ${fresh}"><div class="stack"><div class="bub">${esc(m.text)}</div></div><div class="meta">${mark}${time}</div></div>`;
+      out += `<div class="m me ${cls}"><div class="stack">${bubbleHTML(m, i)}</div><div class="meta">${mark}${time}</div></div>`;
     } else if (c.app === "sms") {
-      out += `<div class="m ${fresh}"><div class="stack"><div class="bub">${esc(m.text)}</div></div><div class="meta">${time}</div></div>`;
+      out += `<div class="m ${cls}"><div class="stack">${bubbleHTML(m, i)}</div><div class="meta">${time}</div></div>`;
     } else {
-      out += `<div class="m ${cont ? "cont" : ""} ${fresh}"><div class="avs">${avatar(sender, "sm")}</div>` +
-        `<div class="stack"><div class="who">${esc(sender)}</div><div class="bub">${esc(m.text)}</div></div><div class="meta">${time}</div></div>`;
+      out += `<div class="m ${cont ? "cont" : ""} ${cls}"><div class="avs">${avatar(sender, "sm")}</div>` +
+        `<div class="stack"><div class="who">${esc(sender)}</div>${bubbleHTML(m, i)}</div><div class="meta">${time}</div></div>`;
     }
     m.fresh = false;
   });
@@ -466,33 +501,82 @@ function chatRoom(c) {
   const el = makeView(`room ${sms ? "sms" : ""} ${c.id === "alert" ? "alertroom" : ""}`,
     `<header class="appbar"><button class="back" aria-label="뒤로">${svg("back")}</button><h1>${esc(c.title)}</h1></header>` +
     `<div class="scroll"><div class="msgs"></div></div>` +
-    `<form class="composer"><input placeholder="${sms ? "문자 메시지" : "메시지 입력"}" enterkeyhint="send" autocomplete="off">` +
-    `<button disabled aria-label="보내기">${svg("send")}</button></form>`, { light: true });
+    (c.noInput
+      ? `<div class="noinput">이 채널에서는 메시지를 보낼 수 없습니다</div>`
+      : `<form class="composer"><input placeholder="${sms ? "문자 메시지" : "메시지 입력"}" enterkeyhint="send" autocomplete="off">` +
+        `<button disabled aria-label="보내기">${svg("send")}</button></form>`), { light: true });
   const entry = { el, light: true, id: "chat:" + c.id };
-  const sc = $(".scroll", el), box = $(".msgs", el), input = $("input", el), btn = $(".composer button", el);
+  const sc = $(".scroll", el), box = $(".msgs", el);
   entry.refresh = () => {
     c.unread = 0;
     box.innerHTML = renderMsgs(c);
     sc.scrollTop = sc.scrollHeight;
   };
-  input.oninput = () => { btn.disabled = !input.value.trim(); };
-  $(".composer", el).onsubmit = e => {
-    e.preventDefault();
-    const text = input.value.trim(); if (!text) return;
-    input.value = ""; btn.disabled = true;
-    sendMsg(c, text);
+  // 사진 누르면 크게, 알림톡 버튼은 연결 불가
+  box.onclick = e => {
+    const p = e.target.closest("[data-photo]");
+    if (p) { const m = c.messages[+p.dataset.photo]; photoView({ img: m.img, color: m.color, caption: m.photo }); return; }
+    if (e.target.closest(".alimbtn")) toast("연결할 수 없습니다");
   };
+  const form = $(".composer", el);
+  if (form) {
+    const input = $("input", form), btn = $("button", form);
+    input.oninput = () => { btn.disabled = !input.value.trim(); };
+    form.onsubmit = e => {
+      e.preventDefault();
+      const text = input.value.trim(); if (!text) return;
+      input.value = ""; btn.disabled = true;
+      sendMsg(c, text);
+    };
+  }
   push(entry);
   update();
   return entry;
 }
 
-const defaultFrom = c => {
+/* ---------- 답장 고르기 ----------
+   1) 방의 replyRules  2) 전역 STORY.replyRules  3) 방의 replies[순서]  4) fallback(방 → 전역) 중 랜덤
+   규칙으로 답했을 때는 이야기 진행(c.sent)을 올리지 않음 */
+const RULES = S.replyRules || [];
+const squash = s => String(s || "").replace(/\s+/g, "");
+function ruleHit(rule, text, depth = 0) {
+  const t = squash(text);
+  if (rule.exact && [].concat(rule.exact).some(x => squash(x) === t)) return true;
+  const m = rule.match;
+  if (typeof m === "string") {                       // "swear" 처럼 전역 규칙 이름
+    const g = depth < 3 && RULES.find(r => r.name === m);
+    return !!g && ruleHit(g, text, depth + 1);
+  }
+  return Array.isArray(m) && m.some(x => squash(x) && t.includes(squash(x)));
+}
+function pickReply(c, text) {
+  if (st.down || c.sendFail || c.neverRead || c.noReply || c.noInput) return null;
+  const variantsOf = r => (c.group && r.groupReplies) || r.replies || [];
+  const take = (key, list) => {                      // 같은 규칙이 또 걸리면 다음 변형, 끝나면 처음으로
+    if (!list.length) return null;
+    const i = c.ruleIdx[key] || 0;
+    c.ruleIdx[key] = i + 1;
+    return list[i % list.length];
+  };
+  const own = c.replyRules || [];
+  for (let i = 0; i < own.length; i++) {
+    if (ruleHit(own[i], text)) { const v = take("room" + i, variantsOf(own[i])); if (v) return v; }
+  }
+  for (let i = 0; i < RULES.length; i++) {
+    if (ruleHit(RULES[i], text)) { const v = take("g:" + (RULES[i].name || i), variantsOf(RULES[i])); if (v) return v; }
+  }
+  const story = (c.replies || [])[c.sent];
+  if (story) { c.sent++; return story; }
+  const fb = (c.fallback && c.fallback.length ? c.fallback : S.fallback) || [];
+  return fb.length ? fb[Math.floor(Math.random() * fb.length)] : null;
+}
+/* 답하는 사람: 1:1 은 그 사람, 단체방은 그 방에서 말한 적 있는 사람 중 랜덤 */
+function replyFromFor(c) {
   if (c.replyFrom) return c.replyFrom;
-  if (!c.group) return c.title;
-  const l = [...c.messages].reverse().find(m => !m.day && !m.me && m.from);
-  return l ? l.from : c.title;
-};
+  const ppl = [...new Set(c.messages.filter(m => !m.day && !m.me && m.from).map(m => m.from))];
+  if (!c.group) return ppl[ppl.length - 1] || c.title;
+  return ppl.length ? ppl[Math.floor(Math.random() * ppl.length)] : c.title;
+}
 
 function sendMsg(c, text) {
   const m = { me: true, text, time: hhmm(now()), live: true, fresh: true, read: false };
@@ -504,22 +588,23 @@ function sendMsg(c, text) {
   }
   softDing();
   update();
-  const reps = (c.replies || [])[c.sent++];
-  if (!reps || c.neverRead) return;
+  const reps = pickReply(c, text);
+  if (!reps) return;
   replyFlow(c, Array.isArray(reps) ? reps : [reps]);
 }
 
 async function replyFlow(c, reps) {
-  await sleep(1400 + Math.random() * 1200);
-  if (st.off) return;
-  c.messages.forEach(m => { if (m.me) m.read = true; });
+  await sleep(900 + Math.random() * 800);
+  if (st.off || st.down) return;
+  c.messages.forEach(m => { if (m.me && !m.failed) m.read = true; });
   update();
+  const who = replyFromFor(c);
   for (const r of reps) {
     const msg = typeof r === "string" ? { text: r } : r;
-    const from = msg.from || defaultFrom(c);
+    const from = msg.from || who;
     await sleep(400);
     c.typing = true; c.typingFrom = from; update();
-    await sleep(Math.min(4000, 700 + String(msg.text).length * 70));
+    await sleep(Math.min(2500, 500 + String(msg.text).length * 45));
     c.typing = false;
     if (st.off) return;
     receive(c, { from, text: msg.text });
@@ -636,17 +721,29 @@ function phoneApp(tab = "recent") {
 }
 
 function call(target) {
-  if (st.inCall) return;
+  if (st.inCall) { toast("통화 중입니다."); return; }
   const who = resolve(target);
   const key = who.name || digits(who.number);
   const scripts = S.callScripts || {};
   let sc = scripts[who.name] || scripts[who.number] || scripts[digits(who.number)];
   const n = st.callCount[key] = (st.callCount[key] || 0) + 1;
   if (sc && n > 1 && sc.again) sc = sc.again;
-  callScreen({ who, script: sc || {}, incoming: false });
+  callScreen({ who, script: sc || {} });
 }
 
-function callScreen({ who, script, incoming, ring, onMiss }) {
+/* 대사 재생 — 발신 화면과 수신 배너가 함께 씀 */
+async function speakLines(lines, line, wait) {
+  for (const l of lines || []) {
+    if (typeof l === "string") { await wait(300); line(l); await wait(900 + l.length * 55); }
+    else if (l.me) { await wait(300); line(l.me, "me"); await wait(800 + l.me.length * 50); }
+    else if (l.sys) { line(l.sys, "sys"); await wait(1500); }
+    else if (l.wait) await wait(l.wait);
+  }
+}
+const callTimer = since => { const s = Math.floor((Date.now() - since) / 1000); return `${pad(Math.floor(s / 60))}:${pad(s % 60)}`; };
+
+/* ---------- 내가 거는 전화: 전체 화면 ---------- */
+function callScreen({ who, script }) {
   st.inCall = true;
   const disp = who.name || who.number;
   const el = makeView("callscr",
@@ -667,39 +764,22 @@ function callScreen({ who, script, incoming, ring, onMiss }) {
     sub.insertAdjacentHTML("beforeend", `<div class="ln ${cls}">${esc(text)}</div>`);
     while (sub.children.length > 5) sub.firstElementChild.remove();
   };
-  const endBtn = () => {
-    btns.innerHTML = `<button class="callbtn end" aria-label="통화 종료">${svg("phone")}</button>`;
-    $(".callbtn", btns).onclick = () => finish(incoming ? "in" : "out");
-  };
-  const connect = () => {
-    connectedAt = Date.now();
-    const show = () => { const s = Math.floor((Date.now() - connectedAt) / 1000); stEl.textContent = `${pad(Math.floor(s / 60))}:${pad(s % 60)}`; };
-    show(); timerInt = setInterval(show, 500);
-  };
-  function finish(dir, { quiet = false } = {}) {
+  function finish() {
     if (finished) return;
     finished = true; tok.dead = true;
     stopRing && stopRing(); stopRing = null; clearInterval(timerInt);
-    st.calls.unshift({ name: disp, dir, time: hhmm(now()), length: connectedAt ? durText(Date.now() - connectedAt) : "" });
-    if (quiet) { removeEntry(entry); return; }
+    st.calls.unshift({ name: disp, dir: "out", time: hhmm(now()), length: connectedAt ? durText(Date.now() - connectedAt) : "" });
     stEl.textContent = "통화 종료"; btns.innerHTML = "";
     hangupTone();
     setTimeout(() => removeEntry(entry), 1300);
   }
-  async function speak(lines) {
-    for (const l of lines || []) {
-      if (typeof l === "string") { await wait(500); line(l); await wait(1300 + l.length * 75); }
-      else if (l.me) { await wait(300); line(l.me, "me"); await wait(1100 + l.me.length * 70); }
-      else if (l.sys) { line(l.sys, "sys"); await wait(1500); }
-      else if (l.wait) await wait(l.wait);
-    }
-  }
-  async function runOutgoing() {
-    endBtn();
+  btns.innerHTML = `<button class="callbtn end" aria-label="통화 종료">${svg("phone")}</button>`;
+  $(".callbtn", btns).onclick = finish;
+  async function run() {
     stEl.textContent = "발신 중…";
     if (st.down) {
       await wait(1200); line(CFG.noService || "서비스 지역이 아닙니다.", "sys"); errTone();
-      await wait(2600); return finish("out");
+      await wait(2600); return finish();
     }
     stopRing = ringback();
     await wait(script.ring ?? 4000);
@@ -707,32 +787,99 @@ function callScreen({ who, script, incoming, ring, onMiss }) {
     if (script.fail || !(script.lines && script.lines.length)) {
       stEl.textContent = "연결 안 됨";
       line(script.fail || CFG.callFail || "연결할 수 없습니다.", "sys"); errTone();
-      await wait(3500); return finish("out");
+      await wait(3500); return finish();
     }
-    connect();
-    await speak(script.lines);
+    connectedAt = Date.now();
+    stEl.textContent = callTimer(connectedAt);
+    timerInt = setInterval(() => { stEl.textContent = callTimer(connectedAt); }, 500);
+    await speakLines(script.lines, line, wait);
     await wait(1500);
-    finish("out");
+    finish();
   }
-  async function runIncoming() {
-    stEl.textContent = "수신 전화";
-    el.classList.add("ringing");
-    btns.innerHTML = `<button class="callbtn" data-a="yes" aria-label="받기">${svg("phone")}</button><button class="callbtn end" data-a="no" aria-label="거절">${svg("phone")}</button>`;
+  push(entry);
+  run().catch(() => {});
+  return entry;
+}
+
+/* ---------- 걸려 오는 전화: 화면 위 배너 ----------
+   화면 스택과 따로 떠 있어서, 전화가 오는 동안에도 아래 화면을 계속 쓸 수 있음 */
+let activeCall = null, callbarSeq = 0;
+function layoutBanner() {          // 메시지 알림 배너가 통화 배너와 겹치지 않게 그 아래로
+  bannerEl.style.top = callbarEl.hidden ? "" : `${callbarEl.offsetTop + callbarEl.offsetHeight + 6}px`;
+}
+function hideCallbar(delay) {
+  const seq = callbarSeq;
+  setTimeout(() => {
+    if (seq !== callbarSeq) return;
+    callbarEl.classList.add("out");
+    setTimeout(() => {
+      if (seq !== callbarSeq) return;
+      callbarEl.hidden = true; callbarEl.classList.remove("out"); layoutBanner();
+    }, 250);
+  }, delay);
+}
+function incomingCall({ who, script, ring, onMiss }) {
+  st.inCall = true;
+  callbarSeq++;
+  const disp = who.name || who.number;
+  const tok = { dead: false };
+  let stopRing = null, timerInt = null, connectedAt = null, finished = false;
+  callbarEl.innerHTML =
+    `<div class="cb-card ringing"><div class="cb-row">${who.name ? avatar(disp, "sm") : iconAv("user", "#5b6475", "sm")}` +
+    `<div class="cb-info"><b>${esc(disp)}</b><span class="cb-st">수신 전화</span></div>` +
+    `<div class="cb-btns"><button class="cb-btn no" data-a="no" aria-label="거절">${svg("phone")}</button>` +
+    `<button class="cb-btn yes" data-a="yes" aria-label="받기">${svg("phone")}</button></div></div><div class="cb-sub"></div></div>`;
+  callbarEl.classList.remove("out"); callbarEl.hidden = false;
+  callbarEl.style.animation = "none"; void callbarEl.offsetWidth; callbarEl.style.animation = "";
+  layoutBanner();
+  const card = $(".cb-card", callbarEl), stEl = $(".cb-st", callbarEl), btns = $(".cb-btns", callbarEl), sub = $(".cb-sub", callbarEl);
+  const wait = async ms => { await sleep(ms); if (tok.dead) throw tok; };
+  const line = (text, cls = "") => {                  // 자막: 최근 2줄만, 이전 줄은 흐리게
+    $$(".ln", sub).forEach(x => x.classList.add("old"));
+    sub.insertAdjacentHTML("beforeend", `<div class="ln ${cls}">${esc(text)}</div>`);
+    while (sub.children.length > 2) sub.firstElementChild.remove();
+    layoutBanner();
+  };
+  function end(dir, quiet) {
+    if (finished) return;
+    finished = true; tok.dead = true;
+    stopRing && stopRing(); stopRing = null; clearInterval(timerInt);
+    st.calls.unshift({ name: disp, dir, time: hhmm(now()), length: connectedAt ? durText(Date.now() - connectedAt) : "" });
+    st.inCall = false; st.callEndedAt = Date.now(); activeCall = null;
+    if (quiet) hideCallbar(0);
+    else { card.className = "cb-card ended"; stEl.textContent = "통화 종료"; btns.innerHTML = ""; hangupTone(); hideCallbar(1000); }
+    update();
+  }
+  activeCall = {                                       // 전원 꺼짐 등으로 강제 종료
+    cancel: () => {
+      if (finished) return;
+      finished = true; tok.dead = true; tok.cancel && tok.cancel();
+      stopRing && stopRing(); clearInterval(timerInt);
+      st.inCall = false; activeCall = null; callbarSeq++; callbarEl.hidden = true;
+    }
+  };
+  async function run() {
     stopRing = ringtone();
     const choice = await new Promise(res => {
-      const t = setTimeout(() => res("timeout"), ring || 20000);
+      const t = setTimeout(() => res("timeout"), ring || 12000);
       btns.onclick = e => { const b = e.target.closest("[data-a]"); if (!b) return; clearTimeout(t); res(b.dataset.a); };
       tok.cancel = () => { clearTimeout(t); res("dead"); };
     });
-    stopRing && stopRing(); stopRing = null; btns.onclick = null; el.classList.remove("ringing");
+    stopRing && stopRing(); stopRing = null; btns.onclick = null;
     if (tok.dead || choice === "dead") return;
     if (choice === "yes") {
-      endBtn(); connect();
-      await speak(script.lines);
-      await wait(1000);
+      card.className = "cb-card active";
+      btns.innerHTML = `<button class="cb-btn end" aria-label="통화 종료">${svg("phone")}</button>`;
+      $(".cb-btn", btns).onclick = () => end("in");
+      connectedAt = Date.now();
+      stEl.textContent = callTimer(connectedAt);
+      timerInt = setInterval(() => { stEl.textContent = callTimer(connectedAt); }, 500);
+      layoutBanner();
+      await speakLines(script.lines, line, wait);
+      await wait(800);
       line("상대방이 통화를 끊었습니다.", "sys");
-      await wait(1200);
-      return finish("in");
+      await wait(1000);
+      return end("in");
     }
     // 안 받거나 거절하면: 잠시 뒤 그 사람이 문자를 보냄 (ifMissed)
     if (onMiss && onMiss.text) {
@@ -742,15 +889,13 @@ function callScreen({ who, script, incoming, ring, onMiss }) {
         receive(c, { from, text: onMiss.text });
       }, 4000);
     }
-    if (choice === "no") return finish("rejected", { quiet: true });
-    finish("missed", { quiet: true });
+    if (choice === "no") return end("rejected", true);
+    end("missed", true);
     st.missedNew++;
     notify({ key: "missed", app: "phone", title: "부재중 전화", text: disp, open: () => phoneApp("recent") });
     update();
   }
-  push(entry);
-  (incoming ? runIncoming() : runOutgoing()).catch(() => {});
-  return entry;
+  run().catch(() => {});
 }
 
 /* =========================================================
@@ -841,7 +986,7 @@ function schoolHome() {
   st.newNotices = 0;
   const el = makeView("school",
     `<div class="shd">${BACK}<span class="emb">${esc((SC.name || "학").charAt(0))}</span><div><b>${esc(SC.name || "학교")}</b><small>모바일 학생 서비스</small></div></div>` +
-    `<div class="scroll"><div class="sect">공지사항</div><div class="list"></div></div>`, { sbBg: "#1f3a68", navBg: "#fff" });
+    `<div class="scroll"><div class="sect">공지사항</div><div class="list"></div></div>`, { sbBg: "#a6192e", navBg: "#fff" });
   const entry = { el, navDark: true, id: "school" };
   entry.refresh = () => {
     $(".list", el).innerHTML = (st.down ? offlineStrip() : "") + st.notices.map((n, i) =>
@@ -871,15 +1016,20 @@ function noticeView(n) {
    ========================================================= */
 function mapApp() {
   const M = S.map || {}, sh = M.shelters || [];
-  const el = makeView("",
+  const el = makeView("mapapp",
     `<header class="appbar">${BACK}<h1>${esc(M.title || "지도")}</h1></header>` +
-    `<div class="mapbox">${sh.map(s => `<div class="pin" style="left:${s.x ?? 50}%;top:${s.y ?? 50}%"><i></i><span>${esc(s.name)}</span></div>`).join("")}` +
-    `<div class="pin me" style="left:50%;top:56%"><i></i></div></div>` +
+    `<div class="mapbox">${sh.map((s, i) => `<div class="pin" style="left:${s.x ?? 50}%;top:${s.y ?? 50}%"><i><b>${i + 1}</b></i></div>`).join("")}` +
+    `<div class="pin me" style="left:50%;top:52%"><i></i><span>내 위치</span></div></div>` +
+    (M.source ? `<div class="mapsrc">${esc(M.source)}</div>` : "") +
     `<div class="scroll"><div class="list">${sh.map((s, i) =>
-      `<button class="row shel" data-i="${i}"><span class="ic2">대피</span><span class="mid"><div class="nm">${esc(s.name)}</div><div class="pv">${esc(s.dist || "")}${s.note ? " · " + esc(s.note) : ""}</div></span></button>`).join("")}</div></div>`,
+      `<div class="row shel"><button class="shel-main" data-i="${i}"><span class="ic2">${i + 1}</span><span class="mid"><div class="nm">${esc(s.name)}</div>` +
+      `<div class="pv">${esc([s.dist, s.addr, s.note].filter(Boolean).join(" · "))}</div></span></button>` +
+      (s.addr ? `<a class="realpos" href="https://map.naver.com/p/search/${encodeURIComponent(s.addr)}" target="_blank" rel="noopener">실제 위치</a>` : "") +
+      `</div>`).join("")}</div></div>`,
     { light: true });
-  $$(".shel", el).forEach(b => {
-    b.onclick = () => { const s = sh[+b.dataset.i]; toast(st.down ? "네트워크 연결이 없어\n길찾기를 할 수 없습니다." : `${s.name}\n${s.dist || ""} ${s.note || ""}`); };
+  // 대피소를 누르면 이름 + 주소. "실제 위치"는 실제 정보라서 이야기 속 망이 끊겨도 열림
+  $$(".shel-main", el).forEach(b => {
+    b.onclick = () => { const s = sh[+b.dataset.i]; toast(`${s.name}\n${s.addr || ""}`); };
   });
   return push({ el, light: true, id: "map" });
 }
@@ -935,6 +1085,7 @@ function shutdown() {
   if (st.off) return;
   st.off = true;
   hideBanner(); overlayEl.hidden = true; toastEl.hidden = true;
+  activeCall && activeCall.cancel();
   st.stopSiren && st.stopSiren();
   const el = makeView("off", `<div>${br(CFG.shutdown || "전원이 꺼집니다.")}</div>`);
   setRoot({ el, noNav: true });
@@ -950,7 +1101,7 @@ function shutdown() {
    ========================================================= */
 let tlStart = 0;
 // at: 90 (초) 또는 "1:30" (분:초)
-const CALL_GAP_MS = 20000;
+const CALL_GAP_MS = 8000;
 const toSec = v => typeof v === "string" && v.includes(":") ? v.split(":").reduce((a, x) => a * 60 + Number(x), 0) : Number(v) || 0;
 const timeline = (S.timeline || []).map(e => ({ ...e, at: toSec(e.at) })).sort((a, b) => a.at - b.at);
 const elapsed = () => (Date.now() - tlStart) / 1000 * SPEED;
@@ -971,7 +1122,7 @@ function runEvent(ev) {
     }
     case "alert": showAlert(ev); break;
     case "call":
-      callScreen({ who: resolve(ev.from || ev.number), script: { lines: ev.lines || [] }, incoming: true, ring: ev.ring, onMiss: ev.ifMissed });
+      incomingCall({ who: resolve(ev.from || ev.number), script: { lines: ev.lines || [] }, ring: ev.ring, onMiss: ev.ifMissed });
       break;
     case "news": {
       const a = st.articles.find(x => x.id === ev.id); if (!a) break;
@@ -1006,7 +1157,8 @@ function tickTimeline() {
   const t = elapsed();
   for (const ev of timeline) {
     if (ev.done || ev.at > t) continue;
-    // 통화 중이거나 방금 끊었으면(20초) 다음 전화는 잠시 미룸 — 전화가 연달아 몰리지 않게
+    // 통화 중이거나 방금 끊었으면(8초) 다음 전화는 잠시 미룸 — 전화가 연달아 몰리지 않게
+    if (ev.type === "call" && st.down) { ev.done = true; continue; }   // 망이 끊긴 뒤엔 전화가 오지 않음
     if (ev.type === "call" && (st.inCall || Date.now() - st.callEndedAt < CALL_GAP_MS)) continue;
     ev.done = true;
     try { runEvent(ev); } catch (e) { console.error("timeline 오류:", ev, e); }
