@@ -46,5 +46,16 @@
 
   <script src="data.js"></script>
   <script src="app.js"></script>
+  <!-- 방문자 수 (GoatCounter 통계: https://kdh070907.goatcounter.com)
+       비교 페이지(compare.html) 안에 들어간 화면은 세지 않음 -->
+  <script>
+    if (window.top === window) {
+      var gc = document.createElement("script");
+      gc.async = true;
+      gc.src = "https://gc.zgo.at/count.js";
+      gc.setAttribute("data-goatcounter", "https://kdh070907.goatcounter.com/count");
+      document.body.appendChild(gc);
+    }
+  </script>
 </body>
 </html>
