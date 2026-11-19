@@ -505,7 +505,6 @@ svg { display: block; }
 
 .offline { margin: 10px 12px 0; padding: 9px 12px; border-radius: 10px; background: #fff7d6; color: #8a6d00; font-size: 12.5px; }
 .newtag { display: inline-grid; place-items: center; width: 16px; height: 16px; margin-right: 6px; border-radius: 4px; background: var(--danger); color: #fff; font-size: 10px; font-style: normal; font-weight: 800; vertical-align: 1px; }
-.replay { color: #666; font-size: 13px; padding: 10px 16px; }
 .school .shd .back { width: 38px; height: 38px; margin: 0 -6px 0 -12px; display: grid; place-items: center; color: #fff; flex: none; }
 
 /* ---------- 지도: 출처 ---------- */
@@ -584,12 +583,32 @@ svg { display: block; }
 }
 @keyframes glitchShift { 0% { transform: translate(0, 0); } 25% { transform: translate(-5px, 1px); } 50% { transform: translate(4px, -2px); } 75% { transform: translate(-2px, 3px); } 100% { transform: translate(0, 0); } }
 @keyframes glitchBars { from { background-position: 0 0, 0 0; } to { background-position: 0 30px, 0 -120px; } }
-.replay-pill {
-  position: absolute; z-index: 95; left: 50%; bottom: calc(var(--nav-h) + 124px); transform: translateX(-50%);
-  padding: 10px 18px; border-radius: 999px; background: rgba(0,0,0,.75); color: #fff; font-size: 13.5px; white-space: nowrap;
-  box-shadow: 0 6px 20px rgba(0,0,0,.35); animation: fadeOnly .6s ease;
+
+/* ---------- 마무리 엔딩 (먹통 · 전원 꺼짐 뒤) ---------- */
+.ending {
+  position: absolute; inset: 0; z-index: 100;
+  display: flex; flex-direction: column; overflow-y: auto; overscroll-behavior: contain;
+  padding: 56px 30px 48px; background: #000; color: #fff; text-align: center;
+  opacity: 0; transition: opacity 2s ease;
+  cursor: pointer; scrollbar-width: none; -webkit-user-select: none; user-select: none;
 }
-@keyframes fadeOnly { from { opacity: 0; } to { opacity: 1; } }
+.ending::-webkit-scrollbar { display: none; }
+.ending.on { opacity: 1; }
+.ending-inner { margin: auto 0; display: flex; flex-direction: column; align-items: center; gap: 22px; }
+.eline {
+  margin: 0; font-size: 17px; line-height: 1.7; word-break: keep-all; overflow-wrap: break-word; text-wrap: balance;
+  opacity: 0; transform: translateY(8px); transition: opacity 1.4s ease, transform 1.4s ease;
+}
+.eline.show { opacity: 1; transform: none; }
+.eline.dim { opacity: .45; }
+.eline.final { margin: 8px 0; font-size: 24px; font-weight: 800; line-height: 1.5; }
+.ending-credit { margin: 16px 0 0; font-size: 13px; color: #8a8f99; opacity: 0; transition: opacity 1.4s ease; }
+.ending-replay {
+  padding: 11px 20px; border-radius: 999px; border: 1px solid rgba(255,255,255,.4);
+  color: #fff; font-size: 14px; opacity: 0; transition: opacity 1.4s ease, background .2s;
+}
+.ending-replay:active { background: rgba(255,255,255,.15); }
+.ending-credit.show, .ending-replay.show { opacity: 1; }
 
 /* =========================================================
    아이폰 느낌 디자인 (html.ios)

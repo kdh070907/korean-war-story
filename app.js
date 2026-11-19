@@ -145,7 +145,8 @@ const st = {
   locked: true, started: false, off: false,
   inCall: false, callEndedAt: 0, callCount: {}, rankSeq: 0,
   nextDrain: 0, stopSiren: null,
-  dead: false, dropCall: null          // dead: 통신망 폭격으로 먹통이 된 뒤
+  dead: false, dropCall: null,         // dead: 통신망 폭격으로 먹통이 된 뒤
+  ending: false                         // 마지막 엔딩 화면이 시작됨
 };
 
 /* =========================================================
@@ -1124,18 +1125,67 @@ function memoView(m) {
    전원 꺼짐
    ========================================================= */
 function shutdown() {
-  if (st.off) return;
+  if (st.off || st.ending) return;
   st.off = true;
   hideBanner(); overlayEl.hidden = true; toastEl.hidden = true;
   activeCall && activeCall.cancel();
+  st.dropCall && st.dropCall();
   st.stopSiren && st.stopSiren();
   const el = makeView("off", `<div>${br(CFG.shutdown || "전원이 꺼집니다.")}</div>`);
   setRoot({ el, noNav: true });
   sbEl.hidden = true;
-  setTimeout(() => {
-    el.innerHTML = `<button class="replay">↻ 처음부터 다시 보기</button>`;
-    $(".replay", el).onclick = () => location.reload();
-  }, 3500);
+  setTimeout(showEnding, 3000);                        // "전원이 꺼집니다" 다음 엔딩으로
+}
+
+/* =========================================================
+   마무리 엔딩 (settings.ending)
+   화면이 꺼지듯 까매지고 → 문장이 한 줄씩 → final(크게) → after_final → credit → 다시 보기
+   화면을 누르면 다음 줄이 바로 나옴. 뒤로가기·Esc 로는 닫히지 않음
+   ========================================================= */
+function showEnding() {
+  if (st.ending) return;
+  st.ending = true;
+  const E = CFG.ending || {};
+  const GAP = 2800;
+  // 하던 것 모두 멈춤: 지직거림, 사이렌, 벨소리, 알림
+  clearTimeout(glitch.t); screenEl.classList.remove("glitch", "shake");
+  hideBanner(); toastEl.hidden = true; overlayEl.hidden = true;
+  st.stopSiren && st.stopSiren(); st.stopSiren = null;
+  activeCall && activeCall.cancel();
+  document.activeElement && document.activeElement.blur && document.activeElement.blur();
+  arm();                                               // 휴대폰 뒤로가기를 눌러도 사이트를 나가지 않게
+  const el = toEl(`<div class="ending" role="dialog" aria-label="엔딩"><div class="ending-inner"></div></div>`);
+  const box = $(".ending-inner", el);
+  screenEl.appendChild(el);
+  void el.offsetWidth; el.classList.add("on");          // 약 2초에 걸쳐 까맣게
+  const items = [
+    ...(E.lines || []).map(t => ({ t, cls: "" })),
+    E.final ? { t: E.final, cls: "final" } : null,
+    E.after_final ? { t: E.after_final, cls: "after" } : null
+  ].filter(Boolean);
+  let i = 0, timer = null, started = false, done = false;
+  const reveal = node => { box.appendChild(node); void node.offsetWidth; node.classList.add("show"); el.scrollTo({ top: el.scrollHeight, behavior: "smooth" }); };
+  function next() {
+    clearTimeout(timer);
+    if (done) return;
+    if (i < items.length) {
+      $$(".eline:not(.final)", box).forEach(x => x.classList.add("dim"));   // 이전 줄은 흐리게 (final 은 그대로)
+      const it = items[i++];
+      reveal(toEl(`<p class="eline ${it.cls}">${br(it.t)}</p>`));
+      timer = setTimeout(next, GAP);
+      return;
+    }
+    done = true;
+    if (E.credit) reveal(toEl(`<p class="ending-credit">${esc(E.credit)}</p>`));
+    const btn = toEl(`<button class="ending-replay">${esc(E.replayText || "↻ 처음부터 다시 보기")}</button>`);
+    btn.onclick = () => location.reload();
+    setTimeout(() => reveal(btn), E.credit ? 900 : 0);
+  }
+  el.addEventListener("pointerdown", e => {             // 탭하면 다음 줄
+    if (e.target.closest(".ending-replay") || !started) return;
+    next();
+  });
+  setTimeout(() => { started = true; next(); }, 2200);  // 화면이 다 꺼진 뒤 첫 줄
 }
 
 /* =========================================================
@@ -1149,7 +1199,6 @@ function glitch(ms) {
 }
 function blackout() {
   if (st.dead || st.off) return;
-  const B = CFG.blackout || {};
   st.dead = true; st.down = true; st.signal = 0;
   hideBanner(); toastEl.hidden = true;
   overlayEl.hidden = true; st.stopSiren && st.stopSiren(); st.stopSiren = null;
@@ -1161,18 +1210,15 @@ function blackout() {
   screenEl.classList.add("dead");
   freezeEl.hidden = false;                             // 이제부터 화면을 눌러도 아무것도 열리지 않음
   update();
-  const again = () => {                                // 가끔씩 화면이 다시 지직거림
-    if (st.off) return;
+  const again = () => {                                // 가끔씩 화면이 다시 지직거림 (엔딩이 시작되면 멈춤)
+    if (st.off || st.ending) return;
     glitch(160 + Math.random() * 380);
     if (Math.random() < 0.4) staticBurst(0.25);
     setTimeout(again, 5000 + Math.random() * 7000);
   };
   setTimeout(again, 4500);
-  setTimeout(() => {
-    const b = toEl(`<button class="replay-pill">${esc(B.replayText || "↻ 처음부터 다시 보기")}</button>`);
-    b.onclick = () => location.reload();
-    screenEl.appendChild(b);
-  }, (B.replayAfter ?? 40) * 1000);
+  const E = CFG.ending || {};
+  setTimeout(showEnding, (E.after ?? 15) * 1000);       // 먹통으로 after초 → 엔딩 (실제 시간 기준)
 }
 // 먹통일 때 화면을 누르면: 그 자리에서 로딩만 돌다가 "응답 없음"
 let freezeToastAt = 0;
@@ -1279,6 +1325,7 @@ function tickBattery() {
    화면 속 ← 버튼, 아래 버튼줄의 <, 키보드 Esc,
    그리고 실제 휴대폰의 뒤로가기(브라우저 뒤로)가 모두 같은 동작을 합니다. */
 function goBack() {
+  if (st.ending) return true;                                             // 엔딩 중에는 아무것도 하지 않음
   if (!overlayEl.hidden) { $("button", overlayEl).click(); return true; }   // 재난문자 닫기
   const t = top();
   if (!t || st.off || t.intro || t.lock) return false;
@@ -1296,7 +1343,7 @@ addEventListener("popstate", () => {
   guarded = false;
   goBack();
   const t = top();
-  if (stack.length > 1 || !overlayEl.hidden || (t && t.call)) arm();
+  if (st.ending || stack.length > 1 || !overlayEl.hidden || (t && t.call)) arm();
 });
 viewsEl.addEventListener("click", e => {
   if (e.target.closest(".back")) { e.preventDefault(); goBack(); }
