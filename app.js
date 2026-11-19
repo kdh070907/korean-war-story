@@ -7,7 +7,12 @@
 
 const S = window.STORY || {};
 const CFG = S.settings || {};
-const SPEED = Math.max(0.1, Number(new URLSearchParams(location.search).get("speed")) || 1);
+const QS = new URLSearchParams(location.search);
+const SPEED = Math.max(0.1, Number(QS.get("speed")) || 1);
+/* 휴대폰 디자인: "galaxy" 또는 "iphone". 주소 뒤 ?style=iphone 이 data.js 의 settings.phoneStyle 보다 우선 */
+const STYLE = /^(iphone|ios)$/i.test(QS.get("style") || CFG.phoneStyle || "") ? "iphone" : "galaxy";
+const IOS = STYLE === "iphone";
+document.documentElement.classList.add(IOS ? "ios" : "galaxy");
 
 /* ---------- 도우미 ---------- */
 const $ = (sel, el = document) => el.querySelector(sel);
@@ -61,6 +66,13 @@ const ICON = {
   del: '<path d="M9 5h11v14H9l-6-7z"/><path d="M12 9.5l5 5M17 9.5l-5 5"/>',
   lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
   user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>',
+  flash: '<path d="M8 3h8v4l-2 3v11h-4V10L8 7z"/><path d="M12 13v2"/>',
+  search: '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>',
+  mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M4 4l16 16"/>',
+  keypad: '<circle cx="6" cy="6" r="1"/><circle cx="12" cy="6" r="1"/><circle cx="18" cy="6" r="1"/><circle cx="6" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="18" cy="12" r="1"/><circle cx="6" cy="18" r="1"/><circle cx="12" cy="18" r="1"/><circle cx="18" cy="18" r="1"/>',
+  speaker: '<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  video: '<rect x="3" y="7" width="12" height="10" rx="2"/><path d="M15 11l6-3v8l-6-3"/>',
   group: '<circle cx="9" cy="9" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5M15.5 14.5c3 0 5.5 1.6 5.5 4.5"/>'
 };
 const svg = name => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON[name] || ""}</svg>`;
@@ -251,7 +263,9 @@ function renderStatus() {
   sbEl.innerHTML =
     `<div class="sb-l"><span>${clock12(d)}</span><span class="noti">${icons.map(a => `<span class="mini">${svg(APPS[a].icon)}</span>`).join("")}</span></div>` +
     `<div class="sb-r"><span class="net">${st.down ? "서비스 없음" : esc(st.net)}</span><span class="sig">${bars}</span>` +
-    `<span class="bat ${st.battery <= 15 ? "low" : ""}">${st.battery}%<span class="cell"><i style="width:${st.battery}%"></i></span></span></div>`;
+    (IOS
+      ? `<span class="bat ios ${st.battery <= 15 ? "low" : ""}"><span class="cell"><i style="width:${st.battery}%"></i><em>${st.battery}</em></span></span></div>`
+      : `<span class="bat ${st.battery <= 15 ? "low" : ""}">${st.battery}%<span class="cell"><i style="width:${st.battery}%"></i></span></span></div>`);
 }
 
 /* ---------- 토스트 · 배너 ---------- */
@@ -351,19 +365,32 @@ function seedLockNotis() {
 function lockView() {
   const el = makeView("wall lock",
     `<div class="clock"></div><div class="date"></div><div class="notis"></div>` +
-    `<button class="hint">${svg("up")}<span>위로 밀어서 잠금 해제</span></button>`);
+    `<div class="lockbtns"><button data-lb="flash" aria-label="손전등">${svg("flash")}</button><button data-lb="camera" aria-label="카메라">${svg("camera")}</button></div>` +
+    `<button class="hint">${svg("up")}<span>${IOS ? "위로 쓸어올려 열기" : "위로 밀어서 잠금 해제"}</span></button>`);
+  $$(".lockbtns button", el).forEach(b => {
+    b.onclick = () => b.dataset.lb === "flash" ? b.classList.toggle("on") : toast((S.appMessages && S.appMessages.camera) || "카메라를 시작할 수 없습니다.");
+  });
   wallpaper(el);
   const entry = { el, lock: true };
   entry.tick = () => { $(".clock", el).textContent = clock12(now()); $(".date", el).textContent = dateLabel(now()); };
   entry.refresh = () => {
-    const list = st.lockNotis, max = 4, box = $(".notis", el);
-    box.innerHTML = list.slice(0, max).map(ncardHTML).join("") +
-      (list.length > max ? `<div class="more">알림 ${list.length - max}개 더</div>` : "");
-    $$(".ncard", box).forEach((b, i) => { b.onclick = () => unlock(list[i].open); });
+    const list = st.lockNotis, box = $(".notis", el);
+    const render = max => {
+      box.innerHTML = list.slice(0, max).map(ncardHTML).join("") +
+        (list.length > max ? `<div class="more">알림 ${list.length - max}개 더</div>` : "");
+      $$(".ncard", box).forEach((b, i) => { b.onclick = () => unlock(list[i].open); });
+    };
+    // 화면 높이에 들어가는 만큼만 카드로 보여주고, 나머지는 "알림 N개 더"
+    let max = 4;
+    render(max);
+    box.style.justifyContent = "flex-start";          // 잴 때만 위에서부터 쌓기 (아이폰은 아래에서부터 쌓아서 위로 넘친 건 안 잡힘)
+    while (box.isConnected && max > 1 && box.scrollHeight > box.clientHeight + 1) render(--max);
+    box.style.justifyContent = "";
   };
+  requestAnimationFrame(() => entry.refresh());
   // 위로 밀어서 잠금 해제
   let y0 = null, dy = 0;
-  el.addEventListener("pointerdown", e => { if (e.target.closest(".ncard, .hint")) return; y0 = e.clientY; dy = 0; });
+  el.addEventListener("pointerdown", e => { if (e.target.closest(".ncard, .hint, .lockbtns")) return; y0 = e.clientY; dy = 0; });
   el.addEventListener("pointermove", e => {
     if (y0 === null) return;
     dy = Math.min(0, e.clientY - y0);
@@ -394,6 +421,7 @@ function homeView() {
     `<div class="widget"><div><div class="t"></div><div class="d"></div></div>` +
     `<div class="w">${esc(W.city || "")}<b>${esc(W.temp || "")}</b>${esc(W.desc || "")}</div></div>` +
     `<div class="grid">${(S.home || []).map(appBtn).join("")}</div>` +
+    `<div class="ios-search">${svg("search")}<span>검색</span></div>` +
     `<div class="dock" style="--n:${dock.length || 1}">${dock.map(appBtn).join("")}</div>`);
   wallpaper(el);
   $$(".app", el).forEach(b => { b.onclick = () => openApp(b.dataset.app); });
@@ -757,7 +785,11 @@ function callScreen({ who, script, incoming = false }) {
   const el = makeView("callscr",
     `<div class="st"></div><div class="nm">${esc(disp)}</div>` +
     `<div class="no">${esc(who.name ? (who.number || "") : "저장되지 않은 번호")}</div>` +
-    `${who.name ? avatar(disp, "lg") : iconAv("user", "#5b6475", "lg")}<div class="sub"></div><div class="btns"></div>`);
+    `${who.name ? avatar(disp, "lg") : iconAv("user", "#5b6475", "lg")}<div class="sub"></div>` +
+    `<div class="cgrid">${[["mic", "소리 끔"], ["keypad", "키패드"], ["speaker", "스피커"], ["plus", "통화 추가"], ["video", "영상 통화"], ["user", "연락처"]]
+      .map(([i, l]) => `<button><i>${svg(i)}</i><span>${l}</span></button>`).join("")}</div>` +
+    `<div class="btns"></div>`);
+  $$(".cgrid button", el).forEach(b => { b.onclick = () => b.classList.toggle("on"); });
   const tok = { dead: false };
   let stopRing = null, timerInt = null, connectedAt = null, finished = false;
   const entry = {
@@ -1270,16 +1302,52 @@ viewsEl.addEventListener("click", e => {
   if (e.target.closest(".back")) { e.preventDefault(); goBack(); }
 });
 
+function goHome() {
+  const t = top();
+  if (IOS && t && t.lock && overlayEl.hidden && !st.dead) { unlock(); return; }   // 아이폰: 잠금화면에서 홈 바를 쓸면 열림
+  if (st.off || !t || t.lock || t.call || t.intro || !overlayEl.hidden) return;
+  popTo(x => x.home);
+}
+let homebarSwiped = false;
 navEl.onclick = e => {
   const b = e.target.closest("[data-nav]");
   if (!b) return;
+  if (homebarSwiped) { homebarSwiped = false; return; }
   const k = b.dataset.nav;
   if (k === "back") { goBack(); return; }
-  const t = top();
-  if (st.off || !t || t.lock || t.call || t.intro || !overlayEl.hidden) return;
-  if (k === "home") popTo(x => x.home);
-  else toast("최근 실행한 앱이 없습니다.");
+  if (k === "home") goHome();
+  else if (!st.off) toast("최근 실행한 앱이 없습니다.");
 };
+if (IOS) {
+  // 홈 바를 위로 쓸어올리면 홈으로
+  let hy = null;
+  navEl.addEventListener("pointerdown", e => { hy = e.clientY; });
+  addEventListener("pointerup", e => {
+    if (hy === null) return;
+    const up = hy - e.clientY; hy = null;
+    if (up > 18) { homebarSwiped = true; setTimeout(() => { homebarSwiped = false; }, 400); goHome(); }
+  });
+  // 화면 왼쪽 끝에서 오른쪽으로 쓸면 뒤로
+  let sx = null, k = 1, moved = 0, tv = null;
+  viewsEl.addEventListener("pointerdown", e => {
+    const r = screenEl.getBoundingClientRect();
+    k = r.width / (screenEl.offsetWidth || r.width) || 1;
+    if ((e.clientX - r.left) / k > 24) return;
+    const t = top();
+    if (!t || t.lock || t.home || t.call || t.intro || stack.length < 2) return;
+    sx = e.clientX; moved = 0; tv = t.el;
+  });
+  addEventListener("pointermove", e => {
+    if (sx === null) return;
+    moved = Math.max(0, (e.clientX - sx) / k);
+    tv.style.transform = `translateX(${moved}px)`;
+  });
+  addEventListener("pointerup", () => {
+    if (sx === null) return;
+    sx = null; tv.style.transform = "";
+    if (moved > 70) goBack();
+  });
+}
 addEventListener("keydown", e => {
   if (e.key === "Escape" && !e.target.closest("input")) goBack();
 });
