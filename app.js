@@ -109,7 +109,7 @@ const chats = [...(S.chats || []), ...(S.sms || [])].map(c => ({
   app: "talk", replies: [], ...c,
   // 메시지에 read 가 적혀 있으면 그걸 우선 (예: 태호 방 전날까지 읽음)
   messages: (c.messages || []).map(m => ({ ...m, read: m.read ?? !c.neverRead })),
-  unread: c.unread || 0, sent: 0, rank: 0, typing: false, ruleIdx: {}
+  unread: c.unread || 0, sent: 0, rank: 0, typing: false, ruleIdx: {}, known: {}
 }));
 /* 방 목록은 최근 메시지 순. 날짜 구분선("11월 3일", "2026년 10월 20일")과 time 으로 시각을 계산 */
 const DEFAULT_YEAR = +String(CFG.date || "2027").slice(0, 4);
@@ -171,18 +171,73 @@ function beep(freq, dur, { type = "sine", vol = 0.1, at = 0 } = {}) {
   o.connect(g).connect(a.destination);
   o.start(t); o.stop(t + dur + 0.02);
 }
-const ding = () => { beep(1046, 0.12, { vol: 0.08 }); beep(1568, 0.2, { vol: 0.06, at: 0.12 }); };
+/* 맑은 종소리 · 마림바 소리 (여러 배음을 겹쳐 빠르게 사라지게) */
+function tone(freq, { at = 0, vol = 0.08, parts = [[1, 1, 0.9]] } = {}) {
+  const a = ac(); if (!a) return;
+  const t = a.currentTime + at;
+  parts.forEach(([mul, amp, dur]) => {
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = "sine"; o.frequency.value = freq * mul;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol * amp, t + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(a.destination);
+    o.start(t); o.stop(t + dur + 0.05);
+  });
+}
+const bell = (f, at = 0, vol = 0.08) => tone(f, { at, vol, parts: [[1, 1, 0.9], [2.76, 0.22, 0.45], [5.4, 0.07, 0.2]] });
+const marimba = (f, at = 0, vol = 0.12) => tone(f, { at, vol, parts: [[1, 1, 0.55], [4, 0.3, 0.14], [9.9, 0.06, 0.05]] });
+function noiseSweep(dur, { vol = 0.05, from = 700, to = 3200 } = {}) {   // "슝" 소리
+  const a = ac(); if (!a) return;
+  const len = Math.floor(a.sampleRate * dur), buf = a.createBuffer(1, len, a.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.sin(Math.PI * i / len);
+  const src = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain(), t = a.currentTime;
+  f.type = "bandpass"; f.Q.value = 1.2;
+  f.frequency.setValueAtTime(from, t); f.frequency.exponentialRampToValueAtTime(to, t + dur);
+  g.gain.value = vol; src.buffer = buf;
+  src.connect(f).connect(g).connect(a.destination); src.start(t);
+}
+const DTMF = { 1: [697, 1209], 2: [697, 1336], 3: [697, 1477], 4: [770, 1209], 5: [770, 1336], 6: [770, 1477],
+  7: [852, 1209], 8: [852, 1336], 9: [852, 1477], "*": [941, 1209], 0: [941, 1336], "#": [941, 1477] };
+
+// 알림음: 아이폰은 세 음이 올라가는 맑은 종소리
+const ding = () => IOS
+  ? [1318.5, 1661.2, 1975.5].forEach((f, i) => bell(f, i * 0.12, 0.07))
+  : (beep(1046, 0.12, { vol: 0.08 }), beep(1568, 0.2, { vol: 0.06, at: 0.12 }));
 const softDing = () => beep(1318, 0.08, { vol: 0.04 });
-const keyTone = () => beep(700 + Math.random() * 600, 0.08, { vol: 0.04 });
+const sendSound = () => IOS ? noiseSweep(0.28) : softDing();                       // 보낼 때 "슝"
+const recvSound = () => IOS ? (tone(880, { vol: 0.05, parts: [[1, 1, 0.12]] }), bell(1568, 0.05, 0.04)) : softDing();   // 대화 중 받을 때 "뽁"
+const lockClick = () => { if (IOS) { noiseSweep(0.03, { vol: 0.08, from: 2500, to: 1800 }); tone(180, { vol: 0.05, parts: [[1, 1, 0.06]] }); } };
+// 키패드: 아이폰은 실제 전화 다이얼 소리(두 음)
+const keyTone = k => IOS && DTMF[k]
+  ? DTMF[k].forEach(f => beep(f, 0.12, { vol: 0.035 }))
+  : beep(700 + Math.random() * 600, 0.08, { vol: 0.04 });
 const errTone = () => [950, 1400, 1800].forEach((f, i) => beep(f, 0.28, { type: "square", vol: 0.03, at: i * 0.33 }));
-const hangupTone = () => [0, 0.25, 0.5].forEach(at => beep(480, 0.15, { vol: 0.05, at }));
+const hangupTone = () => IOS
+  ? [[620, 0], [470, 0.17]].forEach(([f, at]) => beep(f, 0.13, { vol: 0.05, at }))
+  : [0, 0.25, 0.5].forEach(at => beep(480, 0.15, { vol: 0.05, at }));
 function loopSound(fn, period) { fn(); const id = setInterval(fn, period); return () => clearInterval(id); }
 const ringback = () => loopSound(() => { beep(440, 1, { vol: 0.05 }); beep(480, 1, { vol: 0.035 }); }, 3000);
+// 벨소리: 아이폰은 마림바 느낌의 짧은 멜로디(직접 지은 음)
+const RING_NOTES = [[659.3, 0], [987.8, 0.15], [1318.5, 0.3], [987.8, 0.45], [830.6, 0.6], [987.8, 0.75], [1318.5, 0.9], [1480, 1.05], [1318.5, 1.35]];
 const ringtone = () => loopSound(() => {
-  [0, 0.18, 0.36, 0.54, 0.9, 1.08, 1.26, 1.44].forEach((at, i) => beep(i % 2 ? 1175 : 1568, 0.15, { type: "triangle", vol: 0.07, at }));
+  if (IOS) RING_NOTES.forEach(([f, at]) => marimba(f, at, 0.11));
+  else [0, 0.18, 0.36, 0.54, 0.9, 1.08, 1.26, 1.44].forEach((at, i) => beep(i % 2 ? 1175 : 1568, 0.15, { type: "triangle", vol: 0.07, at }));
   vibrate([400, 200, 400]);
-}, 2600);
+}, IOS ? 2400 : 2600);
+// 재난문자: 아이폰은 긴급 경보 표준음(853Hz + 960Hz 두 음을 겹친 소리)을 끊어서
+function easAlarm(sec) {
+  const a = ac(); if (!a || !sec) return () => {};
+  const t = a.currentTime, g = a.createGain(), o1 = a.createOscillator(), o2 = a.createOscillator();
+  o1.frequency.value = 853; o2.frequency.value = 960;
+  g.gain.setValueAtTime(0, t);
+  for (let x = 0; x < sec; x += 0.6) { g.gain.setValueAtTime(0.06, t + x); g.gain.setValueAtTime(0, t + x + 0.45); }
+  o1.connect(g); o2.connect(g); g.connect(a.destination);
+  o1.start(t); o2.start(t); o1.stop(t + sec); o2.stop(t + sec);
+  return () => { try { g.gain.cancelScheduledValues(a.currentTime); g.gain.setValueAtTime(0, a.currentTime); o1.stop(); o2.stop(); } catch (e) {} };
+}
 function siren(sec) {
+  if (IOS) return easAlarm(sec);
   const a = ac(); if (!a || !sec) return () => {};
   const t = a.currentTime, g = a.createGain(), o1 = a.createOscillator(), o2 = a.createOscillator();
   o1.type = "sawtooth"; o2.type = "square";
@@ -406,6 +461,7 @@ function lockView() {
 
 function unlock(then) {
   if (!st.locked) return;
+  lockClick();
   st.locked = false;
   st.lockNotis = [];
   setRoot(homeView());
@@ -491,6 +547,12 @@ function openChat(c) {
   chatRoom(c);
 }
 
+/* 말풍선 아래 이모지 반응: reactions: { "❤️": 3, "👍": 2 } */
+const reactsHTML = m => {
+  const r = m.reactions; if (!r) return "";
+  const list = Array.isArray(r) ? r.map(x => (Array.isArray(x) ? x : [x, 1])) : Object.entries(r);
+  return `<div class="reacts">${list.map(([e, n]) => `<span>${esc(e)}${n > 1 ? `<b>${n}</b>` : ""}</span>`).join("")}</div>`;
+};
 /* 말풍선 한 개: 사진 / 알림톡(button) / 글자 */
 function bubbleHTML(m, i) {
   if (isPhoto(m)) {
@@ -517,12 +579,12 @@ function renderMsgs(c) {
     const cls = `${m.fresh ? "new" : ""} ${m.button || m.alimtalk ? "alim" : ""}`;
     if (m.me) {
       const mark = m.failed ? `<span class="fail">! 전송 실패</span>` : (!m.read ? `<span class="rd">1</span>` : "");
-      out += `<div class="m me ${cls}"><div class="stack">${bubbleHTML(m, i)}</div><div class="meta">${mark}${time}</div></div>`;
+      out += `<div class="m me ${cls}"><div class="stack">${bubbleHTML(m, i)}${reactsHTML(m)}</div><div class="meta">${mark}${time}</div></div>`;
     } else if (c.app === "sms") {
-      out += `<div class="m ${cls}"><div class="stack">${bubbleHTML(m, i)}</div><div class="meta">${time}</div></div>`;
+      out += `<div class="m ${cls}"><div class="stack">${bubbleHTML(m, i)}${reactsHTML(m)}</div><div class="meta">${time}</div></div>`;
     } else {
       out += `<div class="m ${cont ? "cont" : ""} ${cls}"><div class="avs">${avatar(sender, "sm")}</div>` +
-        `<div class="stack"><div class="who">${esc(sender)}</div>${bubbleHTML(m, i)}</div><div class="meta">${time}</div></div>`;
+        `<div class="stack"><div class="who">${esc(sender)}</div>${bubbleHTML(m, i)}${reactsHTML(m)}</div><div class="meta">${time}</div></div>`;
     }
     m.fresh = false;
   });
@@ -572,7 +634,10 @@ function chatRoom(c) {
 }
 
 /* ---------- 답장 고르기 ----------
-   1) 방의 replyRules  2) 전역 STORY.replyRules  3) 방의 replies[순서]  4) fallback(방 → 전역) 중 랜덤
+   1) 방의 replyRules 중 단어를 직접 지정한 규칙
+   2) 전역 STORY.replyRules 를 순서대로 (= 보낸 말의 "뜻") — 그 방에 같은 이름의 규칙(match: "이름")이 있으면 그 방 말투로
+   3) 방의 replies[순서] — 단, 이미 말한 것(누구랑 / 어디)을 다시 묻는 답은 건너뜀
+   4) fallback(방 → 전역) 중 랜덤
    규칙으로 답했을 때는 이야기 진행(c.sent)을 올리지 않음 */
 const RULES = S.replyRules || [];
 const squash = s => String(s || "").replace(/\s+/g, "");
@@ -584,8 +649,23 @@ function ruleHit(rule, text, depth = 0) {
     const g = depth < 3 && RULES.find(r => r.name === m);
     return !!g && ruleHit(g, text, depth + 1);
   }
+  if (rule.re && new RegExp(rule.re).test(String(text))) return true;
   return Array.isArray(m) && m.some(x => squash(x) && t.includes(squash(x)));
 }
+/* 내가 이미 말한 것 기억: 누구랑 있는지 / 어디 있는지 */
+const SAID_WHO = /(?<!사)랑(\s|$|\s*(같이|있))|같이\s*있|함께|둘이|셋이|혼자|하고\s*있/;
+const SAID_WHERE = /집|자취|방이|방에|학교|긱사|기숙사|지하|대피소|주차장|역에|역이/;
+const ASK_WHO = /누구랑|혼자야|혼자 있|혼자면|혼자니/;
+const ASK_WHERE = /어디|자취방이지|집이지/;
+function rememberFacts(c, text) {
+  c.known = c.known || {};
+  if (SAID_WHO.test(text)) c.known.who = true;
+  if (SAID_WHERE.test(text)) c.known.where = true;
+}
+const asksKnown = (c, variant) => [].concat(variant).some(m => {
+  const t = typeof m === "string" ? m : (m && m.text) || "";
+  return (c.known.who && ASK_WHO.test(t)) || (c.known.where && ASK_WHERE.test(t));
+});
 function pickReply(c, text) {
   if (st.down || c.sendFail || c.neverRead || c.noReply || c.noInput) return null;
   const variantsOf = r => (c.group && r.groupReplies) || r.replies || [];
@@ -597,13 +677,20 @@ function pickReply(c, text) {
   };
   const own = c.replyRules || [];
   for (let i = 0; i < own.length; i++) {
-    if (ruleHit(own[i], text)) { const v = take("room" + i, variantsOf(own[i])); if (v) return v; }
+    if (typeof own[i].match !== "string" && ruleHit(own[i], text)) { const v = take("room" + i, variantsOf(own[i])); if (v) return v; }
   }
   for (let i = 0; i < RULES.length; i++) {
-    if (ruleHit(RULES[i], text)) { const v = take("g:" + (RULES[i].name || i), variantsOf(RULES[i])); if (v) return v; }
+    const r = RULES[i];
+    if (!ruleHit(r, text)) continue;
+    const mine = r.name && own.find(x => x.match === r.name);       // 이 방 사람 말투
+    const v = take("g:" + (r.name || i), variantsOf(mine || r));
+    if (v) return v;
   }
-  const story = (c.replies || [])[c.sent];
-  if (story) { c.sent++; return story; }
+  const story = c.replies || [];
+  while (c.sent < story.length) {
+    const v = story[c.sent++];
+    if (!asksKnown(c, v)) return v;                                  // 이미 답한 걸 또 묻지 않기
+  }
   const fb = (c.fallback && c.fallback.length ? c.fallback : S.fallback) || [];
   return fb.length ? fb[Math.floor(Math.random() * fb.length)] : null;
 }
@@ -623,7 +710,8 @@ function sendMsg(c, text) {
     toast(st.down ? "네트워크에 연결되어 있지 않아\n메시지를 보내지 못했습니다." : "메시지를 보내지 못했습니다.");
     update(); return;
   }
-  softDing();
+  sendSound();
+  rememberFacts(c, text);
   update();
   const reps = pickReply(c, text);
   if (!reps) return;
@@ -662,7 +750,7 @@ function receive(c, { from, text }) {
       text: c.group ? `${from}: ${text}` : text,
       count: c.unread, open: () => openChat(c)
     });
-  } else softDing();
+  } else recvSound();
   update();
 }
 
@@ -732,7 +820,7 @@ function phoneApp(tab = "recent") {
       body.innerHTML = `<div class="dial"><div class="num"></div><div class="who"></div>` +
         `<div class="keys">${KEYS.map(([k, s]) => `<button data-k="${k}">${k}<small>${s || " "}</small></button>`).join("")}</div>` +
         `<div class="acts"><span></span><button class="callbtn" aria-label="전화 걸기">${svg("phone")}</button><button class="del" aria-label="지우기">${svg("del")}</button></div></div>`;
-      $$(".keys button", body).forEach(b => { b.onclick = () => { if (dialed.length < 13) dialed += b.dataset.k; keyTone(); renderDial(); }; });
+      $$(".keys button", body).forEach(b => { b.onclick = () => { if (dialed.length < 13) dialed += b.dataset.k; keyTone(b.dataset.k); renderDial(); }; });
       $(".del", body).onclick = () => { dialed = dialed.slice(0, -1); renderDial(); };
       $(".callbtn", body).onclick = () => { if (dialed) call(dialed); };
       renderDial();
@@ -1249,7 +1337,7 @@ const elapsed = () => (Date.now() - tlStart) / 1000 * SPEED;
 
 function newChat(ev) {
   const c = { id: ev.chat, app: ev.app || "talk", title: ev.title || ev.from || ev.chat, group: !!ev.group,
-    messages: [], unread: 0, sent: 0, rank: 0, replies: ev.replies || [], typing: false };
+    messages: [], unread: 0, sent: 0, rank: 0, replies: ev.replies || [], typing: false, ruleIdx: {}, known: {} };
   chats.push(c);
   return c;
 }

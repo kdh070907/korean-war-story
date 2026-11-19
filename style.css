@@ -741,3 +741,21 @@ html.ios body { font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic
 
 /* 토스트 */
 .ios .toast { border-radius: 14px; background: rgba(40,40,44,.9); }
+
+/* ---------- 말풍선 아래 이모지 반응 (카톡 공감처럼) ---------- */
+.reacts { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.reacts span {
+  display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 999px;
+  background: #fff; border: 1px solid rgba(0,0,0,.07); box-shadow: 0 1px 2px rgba(0,0,0,.06);
+  font-size: 12.5px; line-height: 1.45;
+}
+.reacts b { font-size: 11px; font-weight: 600; color: #5b6170; }
+
+/* ---------- 아이폰 디자인: 위급재난문자를 빨갛게 ---------- */
+.ios .overlay { background: rgba(70,0,8,.42); }
+.ios .alertbox { background: #fff; box-shadow: 0 0 0 2px rgba(229,72,77,.95), 0 0 40px rgba(229,72,77,.45), 0 20px 60px rgba(0,0,0,.5); }
+.ios .alertbox .hd { padding: 16px 16px 12px; background: var(--danger); color: #fff; animation: flash 1s steps(2) infinite; }
+.ios .alertbox .hd b { font-size: 17px; font-weight: 700; }
+.ios .alertbox .hd small { color: rgba(255,255,255,.88); }
+.ios .alertbox .bd { padding: 14px 18px 18px; color: #1c1c1e; }
+.ios .alertbox .ft button { color: var(--danger); font-weight: 700; }
