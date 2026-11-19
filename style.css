@@ -144,7 +144,7 @@ svg { display: block; }
 
 /* ---------- 첫 안내 화면 ---------- */
 .intro { background: #000; color: #e9ebf0; align-items: center; justify-content: center; text-align: center; padding: 40px 34px; }
-.intro h1 { font-size: 24px; font-weight: 700; margin: 0 0 18px; letter-spacing: -.02em; }
+.intro h1 { font-size: 24px; font-weight: 700; margin: 0 0 18px; letter-spacing: -.02em; word-break: keep-all; text-wrap: balance; }
 .intro p { margin: 0 0 10px; font-size: 14px; line-height: 1.7; color: #a9afbd; }
 .intro .snd { font-size: 13px; color: #7d8494; margin-top: 6px; }
 .intro .go {
