@@ -48,7 +48,7 @@ const ICON = {
   sms: '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 7l8.5 6 8.5-6"/>',
   news: '<rect x="4" y="4" width="16" height="16" rx="2.5"/><path d="M8 8.5h8M8 12h8M8 15.5h5"/>',
   school: '<path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c3.5 2.5 8.5 2.5 12 0v-5"/><path d="M22 9v6"/>',
-  map: '<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+  map: '<path d="M12 21s-7-6.2-7-11.5a 7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
   gallery: '<rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.5" cy="9.5" r="1.8"/><path d="M21 15.5l-5-5-9.5 9.5"/>',
   memo: '<path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9.5 12h6M9.5 16h6"/>',
   camera: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
@@ -1023,11 +1023,9 @@ function mapApp() {
     (M.source ? `<div class="mapsrc">${esc(M.source)}</div>` : "") +
     `<div class="scroll"><div class="list">${sh.map((s, i) =>
       `<div class="row shel"><button class="shel-main" data-i="${i}"><span class="ic2">${i + 1}</span><span class="mid"><div class="nm">${esc(s.name)}</div>` +
-      `<div class="pv">${esc([s.dist, s.addr, s.note].filter(Boolean).join(" · "))}</div></span></button>` +
-      (s.addr ? `<a class="realpos" href="https://map.naver.com/p/search/${encodeURIComponent(s.addr)}" target="_blank" rel="noopener">실제 위치</a>` : "") +
-      `</div>`).join("")}</div></div>`,
+      `<div class="pv">${esc([s.dist, s.addr, s.note].filter(Boolean).join(" · "))}</div></span></button></div>`).join("")}</div></div>`,
     { light: true });
-  // 대피소를 누르면 이름 + 주소. "실제 위치"는 실제 정보라서 이야기 속 망이 끊겨도 열림
+  // 대피소를 누르면 이름 + 주소
   $$(".shel-main", el).forEach(b => {
     b.onclick = () => { const s = sh[+b.dataset.i]; toast(`${s.name}\n${s.addr || ""}`); };
   });

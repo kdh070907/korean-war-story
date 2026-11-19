@@ -10,14 +10,14 @@
 window.STORY = {
 
   /* ───────────── 기본 설정 ─────────────
-     주인공: 서지우 — 경희대 국제캠퍼스(용인 서천동) 근처 자취생, 산업경영공학과 24학번.
+     주인공: 서지우 — 경희대 국제캠퍼스(용인 서천동) 근처 자취생, 산업경영공학과 26학번.
      남자친구 태호는 군 복무 중(주인공은 '곰신'). */
   settings: {
     owner: "서지우",                 // 휴대폰 주인 이름
     date: "2027-03-13",             // 휴대폰 속 날짜 (YYYY-MM-DD)
     time: "02:47:00",               // 처음 열었을 때 휴대폰 시각. 이후 실제 시간만큼 흘러감
     battery: 23,                    // 시작 배터리 %
-    batteryDrainSec: 25,            // 몇 초마다 1%씩 줄어드는지 (0 이면 안 줄어듦). 0%가 되면 전원이 꺼짐 (지금: 약 9~10분)
+    batteryDrainSec: 50,            // 몇 초마다 1%씩 줄어드는지 (0 이면 안 줄어듦). 0%가 되면 전원이 꺼짐 (지금: 약 19분)
     signal: 3,                      // 신호 세기 0~4
     network: "LTE",                 // 상태표시줄에 보이는 망 이름
     wallpaper: "",                  // 배경화면 사진 경로 (예: "img/wallpaper.jpg"). 비우면 기본 배경
@@ -52,7 +52,7 @@ window.STORY = {
 
   appMessages: {
     camera: "카메라를 시작할 수 없습니다.",
-    clock: "알람: 오전 8:00 (1교시 공학경제)",
+    clock: "알람: 오전 8:00 (1교시 기초프로그래밍)",
     settings: "설정을 열 수 없습니다."
   },
 
@@ -64,6 +64,8 @@ window.STORY = {
     { name: "아빠", number: "010-0418-2290" },
     { name: "지민(동생)", number: "010-0734-1185" },
     { name: "예린", number: "010-0289-6641" },
+    { name: "김민지", number: "010-0647-2018" },
+    { name: "이수빈", number: "010-0853-9126" },
     { name: "태호", number: "010-0902-4417" },
     { name: "자취방 집주인", number: "010-0311-7768" }
   ],
@@ -118,7 +120,7 @@ window.STORY = {
       fallback: ["응 엄마 보고 있어", "계속 연락해"]
     },
     {
-      id: "family", title: "우리 가족 (4)", group: true, unread: 6,
+      id: "family", title: "가족방", group: true, unread: 6,
       messages: [
         { day: "3월 13일 토요일" },
         { from: "아빠", text: "다들 깼으면 대답해", time: "02:15" },
@@ -135,7 +137,7 @@ window.STORY = {
       fallback: ["누나 계속 연락해", "알겠다"]
     },
     {
-      // 예린: 국제캠 기숙사(우정원) 사는 친구
+      // 예린: 국제캠 긱사(제2긱) 사는 친구
       id: "yerin", title: "예린", unread: 2,
       messages: [
         { day: "3월 12일 금요일" },
@@ -143,7 +145,7 @@ window.STORY = {
         { me: true, text: "10시 ㄱㄱ", time: "23:03" },
         { day: "3월 13일 토요일" },
         { from: "예린", text: "야 너 일어났어?", time: "02:26" },
-        { from: "예린", text: "우정원 지금 다 깼어 복도에 사람들 다 나와 있음", time: "02:27" }
+        { from: "예린", text: "긱사 지금 다 깼어 복도에 사람들 다 나와 있음", time: "02:27" }
       ],
       replies: [
         ["너 서천동 자취방이지", "혼자 있지 말고 학교로 와", "아 근데 지금 밖에 나오면 안 되나"],
@@ -152,30 +154,59 @@ window.STORY = {
       fallback: ["나 배터리 아껴야 해 ㅠ 이따 연락할게", "너 진짜 조심해"]
     },
     {
+      // 김민지: 긱사(제2긱) 사는 친구
+      id: "minji", title: "김민지",
+      messages: [
+        { day: "3월 12일 금요일" },
+        { from: "김민지", text: "내일 학식 ㄱ?", time: "18:20" },
+        { me: true, text: "ㅇㅋ 12시", time: "18:31" }
+      ],
+      replies: [
+        ["아 다행이다", "혼자야?"],
+        ["우리 긱사 지하에 있어", "올 수 있으면 이쪽으로 와"]
+      ],
+      fallback: ["ㅇㅋ 계속 연락해", "배터리 아껴"]
+    },
+    {
+      // 이수빈: 긱사(제2긱) 사는 친구
+      id: "subin", title: "이수빈",
+      messages: [
+        { day: "3월 11일 목요일" },
+        { from: "이수빈", text: "기프 과제 했냐", time: "23:02" },
+        { me: true, text: "아직ㅋㅋ", time: "23:10" },
+        { from: "이수빈", text: "ㅋㅋㅋ 같이 망하자", time: "23:10" }
+      ],
+      replies: [
+        ["너 지금 누구랑 있어?", "혼자면 우리 쪽으로 와"],
+        ["사감쌤이 지하에서 인원 체크 중이야"]
+      ],
+      fallback: ["ㅇㅇ 조심해", "무슨 일 있으면 바로 연락해"]
+    },
+    {
       // 태호: 군대 간 남자친구. 전쟁이 터진 뒤로 폰을 볼 수 없어 답장도 읽음도 끝까지 없음
       id: "taeho", title: "태호 ❤️", neverRead: true,
       messages: [
         { day: "3월 10일 수요일" },
-        { from: "태호", text: "지우야 나 4월 휴가 확정!!", time: "20:11" },
-        { from: "태호", text: "D-28 ㅋㅋㅋ", time: "20:11" },
-        { me: true, text: "진짜?? 대박 ㅠㅠ 뭐 먹고 싶어", time: "20:14", read: true },
-        { from: "태호", text: "너ㅎㅎ 아 그리고 치킨", time: "20:15" },
-        { me: true, text: "ㅋㅋㅋ 바보", time: "20:15", read: true },
+        { from: "태호", text: "나 4월 휴가 확정됐다", time: "20:11" },
+        { from: "태호", text: "4월 9일!", time: "20:11" },
+        { me: true, text: "헐 진짜?? 대박", time: "20:14", read: true },
+        { me: true, text: "나오면 뭐 할지 생각해놔", time: "20:14", read: true },
+        { from: "태호", text: "치킨이랑 마라탕 둘 다 먹을 거임", time: "20:16" },
+        { me: true, text: "ㅋㅋㅋ 돼지", time: "20:16", read: true },
         { from: "태호", text: "점호 간다 사랑해", time: "21:58" },
-        { me: true, text: "나도 사랑해 잘 자 💤", time: "22:00", read: true },
+        { me: true, text: "응 사랑해 잘 자", time: "22:00", read: true },
         { day: "3월 11일 목요일" },
-        { from: "태호", text: "굿모닝 지우야", time: "07:32" },
-        { from: "태호", text: "오늘 1교시지? 지각하지 마", time: "07:32" },
-        { me: true, text: "으앙 일어났어… 너도 훈련 조심해", time: "07:51", read: true },
-        { from: "태호", text: "보고 싶다", time: "21:40" },
-        { me: true, text: "나두ㅠㅠ 한 달만 참자", time: "21:42", read: true },
+        { from: "태호", text: "일어났어?", time: "07:32" },
+        { me: true, text: "방금 일어남 1교시 지각각", time: "07:51", read: true },
+        { from: "태호", text: "ㅋㅋㅋ 뛰어", time: "07:52" },
+        { from: "태호", text: "오늘 훈련 빡셌다", time: "21:40" },
+        { me: true, text: "고생했어 ㅠ 푹 자", time: "21:42", read: true },
         { from: "태호", text: "사랑해 잘 자", time: "21:58" },
-        { me: true, text: "응 사랑해 꿈에서 봐 🫶", time: "22:01", read: true },
+        { me: true, text: "나도 사랑해 잘 자~", time: "22:01", read: true },
         { day: "3월 12일 금요일" },
         { from: "태호", text: "오늘 당직이라 연락 늦을 수도 있어", time: "21:48" },
-        { from: "태호", text: "자기 전에 미리 사랑해", time: "21:48" },
-        { me: true, text: "웅 나도 사랑해 고생해", time: "21:50", read: true },
-        { me: true, text: "잘 자 내 군인 💤", time: "23:58", read: true },
+        { from: "태호", text: "미리 잘 자 사랑해", time: "21:48" },
+        { me: true, text: "응응 당직 화이팅 사랑해", time: "21:50", read: true },
         { day: "3월 13일 토요일" },
         { me: true, text: "태호야", time: "02:10" },
         { me: true, text: "뉴스 봤어?", time: "02:10" },
@@ -192,23 +223,19 @@ window.STORY = {
       replies: []
     },
     {
-      id: "dept", title: "24학번 산업경영공학과 동기방 (63)", group: true, unread: 32,
+      // 과 단톡: 전쟁 전 평범한 대화에서 멈춘 방 (전쟁 뒤엔 아무도 안 씀)
+      id: "dept", title: "26학번 산업경영공학과 (58)", group: true, noReply: true,
       messages: [
-        { day: "3월 13일 토요일" },
-        { from: "김도윤", text: "다들 뉴스 봄??", time: "02:12" },
-        { from: "박서연", text: "이거 진짜야?", time: "02:12" },
-        { from: "이현우", text: "우리 동네 방금 사이렌 울림", time: "02:13" },
-        { from: "최수아", text: "가짜뉴스 아니야?", time: "02:13" },
-        { from: "김도윤", text: "재난문자 왔잖아", time: "02:14" },
-        { from: "정하준", text: "월요일 공학경제 시험은 어떻게 되는 거임", time: "02:15" },
-        { from: "박서연", text: "지금 시험이 문제냐", time: "02:15" },
-        { from: "이현우", text: "우정원 애들 다 지하로 내려갔대", time: "02:31" }
+        { day: "3월 11일 목요일" },
+        { from: "과대 박서연", text: "📢 다음 주 목요일 개강총회 있어요! 참석 여부 투표 부탁드려요", time: "19:02" },
+        { from: "김도윤", text: "기프 과제 3번 출력 형식 어떻게 하는지 아는 사람?", time: "22:14" },
+        { from: "이현우", text: "공지 보니까 예시대로만 맞추면 된대", time: "22:16" },
+        { from: "김도윤", text: "ㄳㄳ", time: "22:16" },
+        { day: "3월 12일 금요일" },
+        { from: "정하준", text: "혹시 미적 교재 남는 사람 있어?", time: "15:40" },
+        { from: "최수아", text: "나 선배한테 받은 거 하나 남음 개인톡 줘", time: "15:52" }
       ],
-      replies: [
-        ["지우 살아있었네", "너 자취방 서천동이지?"],
-        ["학교 건물 지하가 대피소래", "단과대 건물마다 지하 1층"]
-      ],
-      fallback: ["ㅇㅇ 다들 조심하자", "단톡 너무 빨라서 못 따라가겠다"]
+      replies: []
     },
     {
       // 세계와시민 3조 — 교양 팀플방(주제: 캠퍼스 일회용컵 줄이기). 전쟁 전 대화만 남아 있고 이후엔 아무도 안 씀
@@ -363,20 +390,21 @@ window.STORY = {
           "정부는 오전 중 추가 브리핑을 열 예정이다."
         ],
         comments: [
-          { name: "ha***", text: "이게 실화냐…", likes: 2210 },
-          { name: "mi***", text: "가족들 다 무사하길", likes: 1873 }
+          { name: "ha***", text: "어?? ㄹㅇ 전쟁이라고??", likes: 31 },
+          { name: "mi***", text: "아니미친", likes: 24 },
+          { name: "jk***", text: "아시발 제발 저 살고싶어요 아 왜 하필 아", likes: 17 },
+          { name: "so***", text: "큰일났네요... 다들 무사하세요", likes: 12 },
+          { name: "yo***", text: "이거 부산으로 피난가야하는건가요??", likes: 8 }
         ]
       },
       {
-        id: "a2", press: "한결뉴스", ago: "12분 전", color: "#2b4a7a",
+        id: "a2", press: "한결뉴스", ago: "12분 전", color: "#2b4b7a",
         title: "수도권 전역 사이렌… 시민들 지하철역·지하시설로 대피",
         body: [
           "수도권 전역에 사이렌이 울리면서 시민들이 가까운 지하철역과 건물 지하로 몰렸다.",
           "일부 역에서는 사람이 몰려 출입이 통제되고 있다."
         ],
-        comments: [
-          { name: "so***", text: "역 입구에 사람 너무 많아요", likes: 431 }
-        ]
+        comments: []
       },
       {
         id: "a3", press: "열린방송 ONT", hidden: true, breaking: true, color: "#4a4a4a",
@@ -388,17 +416,6 @@ window.STORY = {
         comments: []
       },
       {
-        id: "a7", press: "바른통신", hidden: true, color: "#2b5a5a",
-        title: "'대피소 위치' 검색 폭주… 대피시설 안내 서비스 접속 지연",
-        body: [
-          "공습경보 직후 '대피소 위치' 검색량이 평소의 수백 배로 치솟았다.",
-          "대피시설 안내 서비스에는 접속자가 몰려 화면이 열리지 않는 현상이 이어지고 있다."
-        ],
-        comments: [
-          { name: "ne***", text: "미리 알아둘걸… 진짜 후회됨", likes: 2033 }
-        ]
-      },
-      {
         id: "a4", press: "새날일보", hidden: true, breaking: true, color: "#3d4a2b",
         title: "[속보] 국방부 \"전 장병 휴가·외출 전면 통제\"",
         body: [
@@ -406,8 +423,7 @@ window.STORY = {
           "장병들의 휴대전화 사용도 중단됐다. 국방부는 장병 관련 소식은 공식 채널로만 안내하겠다고 밝혔다."
         ],
         comments: [
-          { name: "go***", text: "남자친구 마지막 톡에 1이 안 사라져요…", likes: 3120 },
-          { name: "ma***", text: "아들 무사하기만 해라", likes: 2874 }
+          { name: "go***", text: "아 제발 승규야 무사해줘 제발 진짜 제발...제발", likes: 15 }
         ]
       },
       {
@@ -417,9 +433,7 @@ window.STORY = {
           "통화량이 한꺼번에 몰리면서 수도권 일부 지역에서 전화와 문자가 끊기고 있다.",
           "국가비상대책본부는 가족과 만날 장소를 미리 정해 두고 휴대전화 배터리를 아껴 달라고 당부했다."
         ],
-        comments: [
-          { name: "ka***", text: "엄마랑 통화하다 끊겼어요", likes: 1650 }
-        ]
+        comments: []
       }
     ]
   },
@@ -469,8 +483,8 @@ window.STORY = {
 
   /* ───────────── 메모 ───────────── */
   memos: [
-    { title: "이번 주 할 일", date: "3월 11일", text: "- 공학경제 과제\n- 세계와시민 발표 대본 다듬기\n- 쿠슐랭 회비 입금\n- 엄마 생신 선물 고르기" },
-    { title: "장 볼 것", date: "3월 9일", text: "계란, 라면, 휴지" }
+    { title: "이번 주 할 일", date: "3월 11일", text: "- 기프 과제\n- 세계와시민 발표 대본 다듬기\n- 엄마 생신 선물 고르기" },
+    { title: "장 볼 것", date: "3월 9일", text: "귤, 계란, 비엔나 소시지, 닭가슴살" }
   ],
 
   /* ───────────── 시간이 흐르며 일어나는 일 ─────────────
@@ -487,9 +501,9 @@ window.STORY = {
        battery : 배터리 값 변경      { value: 5 } */
   timeline: [
     // 0분대
-    { at: "0:04", type: "message", chat: "dept", from: "이현우", text: "지금 또 울린다" },
     { at: "0:12", type: "alert", text: "[국가비상대책본부] 02:50 수도권 전역 공습경보 발령. 즉시 가까운 지하 대피시설로 대피하십시오. 엘리베이터 사용 금지." },
-    { at: "0:22", type: "message", chat: "dept", from: "최수아", text: "다들 어디로 대피함?" },
+    { at: "0:20", type: "message", chat: "minji", from: "김민지", text: "야 너 어디야" },
+    { at: "0:24", type: "message", chat: "minji", from: "김민지", text: "자취방이야?" },
     { at: "0:30", type: "message", chat: "mom", from: "엄마", text: "지우야 제발" },
     { at: "0:38", type: "call", from: "엄마", ring: 12000,
       lines: ["지우야!! 지우야, 엄마야", { me: "엄마, 나 괜찮아" }, "아이고… 다행이다… 지금 어디야", { me: "자취방. 밖에 사이렌 계속 울려" },
@@ -498,10 +512,10 @@ window.STORY = {
 
     // 1분대
     { at: "1:05", type: "news", id: "a3" },
-    { at: "1:15", type: "news", id: "a7" },
-    { at: "1:25", type: "message", chat: "dept", from: "김도윤", text: "학교 건물 지하가 대피소래 단과대마다 지하 1층" },
+    { at: "1:20", type: "message", chat: "subin", from: "이수빈", text: "지우야 너 누구랑 있어?" },
+    { at: "1:24", type: "message", chat: "subin", from: "이수빈", text: "혼자 있는 거 아니지?" },
     { at: "1:35", type: "notice", title: "[긴급] 휴교 및 기숙사 지하 대피 안내", dept: "총장실", important: true,
-      body: "교육부 휴교령에 따라 오늘부로 휴교합니다.\n기숙사(우정원 등) 거주생은 사감의 안내에 따라 지하 시설로 이동하십시오.\n자취생은 가까운 민방위 대피시설을 이용하십시오." },
+      body: "교육부 휴교령에 따라 오늘부로 휴교합니다.\n기숙사 거주생은 사감의 안내에 따라 지하 시설로 이동하십시오.\n자취생은 가까운 민방위 대피시설을 이용하십시오." },
     { at: "1:45", type: "message", chat: "alba", from: "매니저님", text: "다들 빨리 대피하세요!! 가게 걱정은 하지 말고" },
     { at: "1:55", type: "message", chat: "yerin", from: "예린", text: "지우야 답장 좀" },
 
@@ -510,12 +524,14 @@ window.STORY = {
       lines: ["누나…", { me: "지민아! 괜찮아?" }, "응… 지금 엄마랑 아파트 지하주차장이야", "사람들 엄청 많아. 다들 휴대폰만 보고 있어",
               { me: "엄마 옆에 꼭 붙어 있어" }, "누나는 언제 와?", { wait: 1000 }, { me: "…길 열리면 바로 갈게" }, "약속한 거다", { wait: 600 }],
       ifMissed: { chat: "family", text: "누나 왜 전화 안 받아" } },
-    { at: "2:50", type: "message", chat: "dept", from: "정하준", text: "영통역 들어갈 수 있음? 사람 너무 많대" },
+    { at: "2:45", type: "message", chat: "minji", from: "김민지", text: "우리 긱사 지하로 다 내려옴" },
+    { at: "2:49", type: "message", chat: "minji", from: "김민지", text: "사람 진짜 많아 너도 이쪽으로 와" },
 
     // 3분대
     { at: "3:05", type: "message", chat: "family", from: "엄마", text: "엄마랑 지민이는 아파트 지하주차장이야" },
     { at: "3:09", type: "message", chat: "family", from: "아빠", text: "아빠는 지우 쪽으로 가는 중. 길이 다 막혔다" },
     { at: "3:20", type: "news", id: "a4" },
+    { at: "3:30", type: "message", chat: "subin", from: "이수빈", text: "야 답 좀 해 걱정되잖아" },
     { at: "3:35", type: "network", signal: 2, label: "3G" },
     { at: "3:45", type: "alert", text: "[국가비상대책본부] 수도권 일부 지역 통신 장애 발생. 가족과 만날 장소를 미리 정하고, 가까운 지하 대피시설에 머무르십시오." },
     { at: "3:50", type: "news", id: "a6" },
@@ -525,7 +541,7 @@ window.STORY = {
       lines: ["지우야! 아빠야", { me: "아빠!" }, "다친 데 없지? 지금 어디야", { me: "자취방이야" }, "학교 지하로 가. 지금 바로.", { wait: 900 }, "엄마랑 지민이는 괜찮", { wait: 600 }, "…"],
       ifMissed: { chat: "family", text: "지우야 전화 좀 받아라" } },
     { at: "4:30", type: "trending", list: ["전쟁", "대피소", "통신 장애", "공습경보", "장병 휴가 통제", "부대 연락", "대피소 위치", "휴교령", "지하철 운행 중단", "정전"] },
-    { at: "4:45", type: "message", chat: "dept", from: "박서연", text: "우정원 지하 사람 꽉 찼대" },
+    { at: "4:45", type: "message", chat: "yerin", from: "예린", text: "긱사 지하 와이파이도 안 터져" },
 
     // 5분대
     { at: "5:10", type: "network", signal: 1, label: "3G" },
@@ -533,6 +549,7 @@ window.STORY = {
       lines: ["지우야? …들려?", { me: "엄마! 응, 들려!" }, "…학교로 …지금 바로…", { wait: 1000 }, "…ㅇ…", { wait: 1000 }],
       ifMissed: { chat: "mom", text: "전화가 자꾸 끊겨" } },
     { at: "5:50", type: "message", chat: "family", from: "아빠", text: "지우 연락 오면 바로 알려" },
+    { at: "6:00", type: "message", chat: "minji", from: "김민지", text: "나 배터리 9퍼 남음 이따 꼭 연락해" },
 
     // 6분: 망이 끊김
     { at: "6:20", type: "network", signal: 0, label: "", down: true }
