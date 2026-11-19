@@ -99,7 +99,7 @@ const chats = [...(S.chats || []), ...(S.sms || [])].map(c => ({
   messages: (c.messages || []).map(m => ({ ...m, read: m.read ?? !c.neverRead })),
   unread: c.unread || 0, sent: 0, rank: 0, typing: false, ruleIdx: {}
 }));
-/* 방 목록은 최근 메시지 순. 날짜 구분선("3월 12일", "2026년 11월 17일")과 time 으로 시각을 계산 */
+/* 방 목록은 최근 메시지 순. 날짜 구분선("11월 3일", "2026년 10월 20일")과 time 으로 시각을 계산 */
 const DEFAULT_YEAR = +String(CFG.date || "2027").slice(0, 4);
 function lastStamp(msgs) {
   let y = DEFAULT_YEAR, mo = 0, d = 0, last = null;
@@ -132,7 +132,8 @@ const st = {
   lockNotis: [],
   locked: true, started: false, off: false,
   inCall: false, callEndedAt: 0, callCount: {}, rankSeq: 0,
-  nextDrain: 0, stopSiren: null
+  nextDrain: 0, stopSiren: null,
+  dead: false, dropCall: null          // dead: 통신망 폭격으로 먹통이 된 뒤
 };
 
 /* =========================================================
@@ -181,6 +182,13 @@ function siren(sec) {
   o1.start(t); o2.start(t); o1.stop(t + sec); o2.stop(t + sec);
   return () => { try { g.gain.cancelScheduledValues(a.currentTime); g.gain.setValueAtTime(0, a.currentTime); o1.stop(); o2.stop(); } catch (e) {} };
 }
+function staticBurst(sec) {                 // 통신 끊길 때 "지직" 잡음
+  const a = ac(); if (!a) return;
+  const len = Math.floor(a.sampleRate * sec), buf = a.createBuffer(1, len, a.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len) * (Math.random() < 0.08 ? 1 : 0.35);
+  const src = a.createBufferSource(), g = a.createGain();
+  g.gain.value = 0.07; src.buffer = buf; src.connect(g).connect(a.destination); src.start();
+}
 const vibrate = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} };
 
 /* =========================================================
@@ -188,7 +196,7 @@ const vibrate = p => { try { navigator.vibrate && navigator.vibrate(p); } catch 
    ========================================================= */
 const viewsEl = $("#views"), sbEl = $("#statusbar"), navEl = $("#navbar"), bannerEl = $("#banner"),
       overlayEl = $("#overlay"), toastEl = $("#toast"), screenEl = $("#screen"), device = $("#device"),
-      callbarEl = $("#callbar");
+      callbarEl = $("#callbar"), freezeEl = $("#freeze");
 const stack = [];
 const top = () => stack[stack.length - 1];
 
@@ -612,7 +620,7 @@ async function replyFlow(c, reps) {
 }
 
 function receive(c, { from, text }) {
-  if (st.off) return;
+  if (st.off || st.dead) return;                       // 먹통 뒤에는 아무것도 들어오지 않음
   c.messages.push({ from, text, time: hhmm(now()), live: true, fresh: true });
   bump(c);
   const t = top();
@@ -742,8 +750,8 @@ async function speakLines(lines, line, wait) {
 }
 const callTimer = since => { const s = Math.floor((Date.now() - since) / 1000); return `${pad(Math.floor(s / 60))}:${pad(s % 60)}`; };
 
-/* ---------- 내가 거는 전화: 전체 화면 ---------- */
-function callScreen({ who, script }) {
+/* ---------- 통화 화면(전체 화면): 내가 거는 전화, 그리고 걸려 온 전화를 받았을 때 ---------- */
+function callScreen({ who, script, incoming = false }) {
   st.inCall = true;
   const disp = who.name || who.number;
   const el = makeView("callscr",
@@ -754,7 +762,7 @@ function callScreen({ who, script }) {
   let stopRing = null, timerInt = null, connectedAt = null, finished = false;
   const entry = {
     el, call: true, noNav: true,
-    onClose: () => { tok.dead = true; stopRing && stopRing(); clearInterval(timerInt); st.inCall = false; st.callEndedAt = Date.now(); }
+    onClose: () => { tok.dead = true; stopRing && stopRing(); clearInterval(timerInt); st.inCall = false; st.callEndedAt = Date.now(); st.dropCall = null; }
   };
   const stEl = $(".st", el), sub = $(".sub", el), btns = $(".btns", el);
   const wait = async ms => { await sleep(ms); if (tok.dead) throw tok; };
@@ -768,14 +776,34 @@ function callScreen({ who, script }) {
     if (finished) return;
     finished = true; tok.dead = true;
     stopRing && stopRing(); stopRing = null; clearInterval(timerInt);
-    st.calls.unshift({ name: disp, dir: "out", time: hhmm(now()), length: connectedAt ? durText(Date.now() - connectedAt) : "" });
+    st.calls.unshift({ name: disp, dir: incoming ? "in" : "out", time: hhmm(now()), length: connectedAt ? durText(Date.now() - connectedAt) : "" });
     stEl.textContent = "통화 종료"; btns.innerHTML = "";
     hangupTone();
     setTimeout(() => removeEntry(entry), 1300);
   }
+  // 통신망이 끊기면 통화도 끊김
+  st.dropCall = () => {
+    if (finished) return;
+    tok.dead = true; stopRing && stopRing(); stopRing = null; clearInterval(timerInt);
+    line(CFG.callDropped || "통화가 끊겼습니다.", "sys"); errTone();
+    setTimeout(finish, 1500);
+  };
   btns.innerHTML = `<button class="callbtn end" aria-label="통화 종료">${svg("phone")}</button>`;
   $(".callbtn", btns).onclick = finish;
+  const startTimer = () => {
+    connectedAt = Date.now();
+    stEl.textContent = callTimer(connectedAt);
+    timerInt = setInterval(() => { stEl.textContent = callTimer(connectedAt); }, 500);
+  };
   async function run() {
+    if (incoming) {                                   // 받은 전화: 바로 통화 시작
+      startTimer();
+      await speakLines(script.lines, line, wait);
+      await wait(800);
+      line("상대방이 통화를 끊었습니다.", "sys");
+      await wait(1000);
+      return finish();
+    }
     stEl.textContent = "발신 중…";
     if (st.down) {
       await wait(1200); line(CFG.noService || "서비스 지역이 아닙니다.", "sys"); errTone();
@@ -789,9 +817,7 @@ function callScreen({ who, script }) {
       line(script.fail || CFG.callFail || "연결할 수 없습니다.", "sys"); errTone();
       await wait(3500); return finish();
     }
-    connectedAt = Date.now();
-    stEl.textContent = callTimer(connectedAt);
-    timerInt = setInterval(() => { stEl.textContent = callTimer(connectedAt); }, 500);
+    startTimer();
     await speakLines(script.lines, line, wait);
     await wait(1500);
     finish();
@@ -801,8 +827,9 @@ function callScreen({ who, script }) {
   return entry;
 }
 
-/* ---------- 걸려 오는 전화: 화면 위 배너 ----------
-   화면 스택과 따로 떠 있어서, 전화가 오는 동안에도 아래 화면을 계속 쓸 수 있음 */
+/* ---------- 걸려 오는 전화: 울리는 동안은 화면 위 배너 ----------
+   배너는 화면 스택과 따로 떠 있어서 울리는 동안에도 아래 화면을 계속 쓸 수 있음.
+   받으면 전체 화면 통화(callScreen)로 바뀜 */
 let activeCall = null, callbarSeq = 0;
 function layoutBanner() {          // 메시지 알림 배너가 통화 배너와 겹치지 않게 그 아래로
   bannerEl.style.top = callbarEl.hidden ? "" : `${callbarEl.offsetTop + callbarEl.offsetHeight + 6}px`;
@@ -823,39 +850,31 @@ function incomingCall({ who, script, ring, onMiss }) {
   callbarSeq++;
   const disp = who.name || who.number;
   const tok = { dead: false };
-  let stopRing = null, timerInt = null, connectedAt = null, finished = false;
+  let stopRing = null, finished = false;
   callbarEl.innerHTML =
     `<div class="cb-card ringing"><div class="cb-row">${who.name ? avatar(disp, "sm") : iconAv("user", "#5b6475", "sm")}` +
     `<div class="cb-info"><b>${esc(disp)}</b><span class="cb-st">수신 전화</span></div>` +
     `<div class="cb-btns"><button class="cb-btn no" data-a="no" aria-label="거절">${svg("phone")}</button>` +
-    `<button class="cb-btn yes" data-a="yes" aria-label="받기">${svg("phone")}</button></div></div><div class="cb-sub"></div></div>`;
+    `<button class="cb-btn yes" data-a="yes" aria-label="받기">${svg("phone")}</button></div></div></div>`;
   callbarEl.classList.remove("out"); callbarEl.hidden = false;
   callbarEl.style.animation = "none"; void callbarEl.offsetWidth; callbarEl.style.animation = "";
   layoutBanner();
-  const card = $(".cb-card", callbarEl), stEl = $(".cb-st", callbarEl), btns = $(".cb-btns", callbarEl), sub = $(".cb-sub", callbarEl);
-  const wait = async ms => { await sleep(ms); if (tok.dead) throw tok; };
-  const line = (text, cls = "") => {                  // 자막: 최근 2줄만, 이전 줄은 흐리게
-    $$(".ln", sub).forEach(x => x.classList.add("old"));
-    sub.insertAdjacentHTML("beforeend", `<div class="ln ${cls}">${esc(text)}</div>`);
-    while (sub.children.length > 2) sub.firstElementChild.remove();
-    layoutBanner();
-  };
-  function end(dir, quiet) {
+  const btns = $(".cb-btns", callbarEl);
+  function end(dir) {                                  // 안 받음 · 거절
     if (finished) return;
     finished = true; tok.dead = true;
-    stopRing && stopRing(); stopRing = null; clearInterval(timerInt);
-    st.calls.unshift({ name: disp, dir, time: hhmm(now()), length: connectedAt ? durText(Date.now() - connectedAt) : "" });
+    stopRing && stopRing(); stopRing = null;
+    st.calls.unshift({ name: disp, dir, time: hhmm(now()), length: "" });
     st.inCall = false; st.callEndedAt = Date.now(); activeCall = null;
-    if (quiet) hideCallbar(0);
-    else { card.className = "cb-card ended"; stEl.textContent = "통화 종료"; btns.innerHTML = ""; hangupTone(); hideCallbar(1000); }
+    hideCallbar(0);
     update();
   }
-  activeCall = {                                       // 전원 꺼짐 등으로 강제 종료
+  activeCall = {                                       // 전원 꺼짐 · 먹통 등으로 강제 종료
     cancel: () => {
       if (finished) return;
       finished = true; tok.dead = true; tok.cancel && tok.cancel();
-      stopRing && stopRing(); clearInterval(timerInt);
-      st.inCall = false; activeCall = null; callbarSeq++; callbarEl.hidden = true;
+      stopRing && stopRing();
+      st.inCall = false; st.callEndedAt = Date.now(); activeCall = null; callbarSeq++; callbarEl.hidden = true; layoutBanner();
     }
   };
   async function run() {
@@ -867,30 +886,23 @@ function incomingCall({ who, script, ring, onMiss }) {
     });
     stopRing && stopRing(); stopRing = null; btns.onclick = null;
     if (tok.dead || choice === "dead") return;
-    if (choice === "yes") {
-      card.className = "cb-card active";
-      btns.innerHTML = `<button class="cb-btn end" aria-label="통화 종료">${svg("phone")}</button>`;
-      $(".cb-btn", btns).onclick = () => end("in");
-      connectedAt = Date.now();
-      stEl.textContent = callTimer(connectedAt);
-      timerInt = setInterval(() => { stEl.textContent = callTimer(connectedAt); }, 500);
-      layoutBanner();
-      await speakLines(script.lines, line, wait);
-      await wait(800);
-      line("상대방이 통화를 끊었습니다.", "sys");
-      await wait(1000);
-      return end("in");
+    if (choice === "yes") {                            // 받으면 배너를 닫고 전체 화면으로
+      finished = true; activeCall = null;
+      callbarSeq++; callbarEl.hidden = true; layoutBanner();
+      callScreen({ who, script, incoming: true });
+      return;
     }
     // 안 받거나 거절하면: 잠시 뒤 그 사람이 문자를 보냄 (ifMissed)
     if (onMiss && onMiss.text) {
       setTimeout(() => {
+        if (st.dead) return;
         const from = onMiss.from || disp;
         const c = chatById(onMiss.chat) || newChat({ chat: onMiss.chat || disp, from });
         receive(c, { from, text: onMiss.text });
       }, 4000);
     }
-    if (choice === "no") return end("rejected", true);
-    end("missed", true);
+    if (choice === "no") return end("rejected");
+    end("missed");
     st.missedNew++;
     notify({ key: "missed", app: "phone", title: "부재중 전화", text: disp, open: () => phoneApp("recent") });
     update();
@@ -1095,6 +1107,59 @@ function shutdown() {
 }
 
 /* =========================================================
+   통신망 폭격 → 먹통 (이야기의 마지막)
+   화면이 지직거리고, 무엇을 눌러도 로딩만 돌다 "응답 없음". 앱이 열리지 않음
+   ========================================================= */
+function glitch(ms) {
+  screenEl.classList.remove("glitch"); void screenEl.offsetWidth;
+  screenEl.classList.add("glitch");
+  clearTimeout(glitch.t); glitch.t = setTimeout(() => screenEl.classList.remove("glitch"), ms);
+}
+function blackout() {
+  if (st.dead || st.off) return;
+  const B = CFG.blackout || {};
+  st.dead = true; st.down = true; st.signal = 0;
+  hideBanner(); toastEl.hidden = true;
+  overlayEl.hidden = true; st.stopSiren && st.stopSiren(); st.stopSiren = null;
+  activeCall && activeCall.cancel();                   // 울리던 전화는 사라짐
+  st.dropCall && st.dropCall();                        // 통화 중이면 끊김
+  chats.forEach(c => { c.typing = false; });
+  document.activeElement && document.activeElement.blur && document.activeElement.blur();
+  glitch(1700); staticBurst(1.1); vibrate([300, 80, 300, 80, 900]);
+  screenEl.classList.add("dead");
+  freezeEl.hidden = false;                             // 이제부터 화면을 눌러도 아무것도 열리지 않음
+  update();
+  const again = () => {                                // 가끔씩 화면이 다시 지직거림
+    if (st.off) return;
+    glitch(160 + Math.random() * 380);
+    if (Math.random() < 0.4) staticBurst(0.25);
+    setTimeout(again, 5000 + Math.random() * 7000);
+  };
+  setTimeout(again, 4500);
+  setTimeout(() => {
+    const b = toEl(`<button class="replay-pill">${esc(B.replayText || "↻ 처음부터 다시 보기")}</button>`);
+    b.onclick = () => location.reload();
+    screenEl.appendChild(b);
+  }, (B.replayAfter ?? 40) * 1000);
+}
+// 먹통일 때 화면을 누르면: 그 자리에서 로딩만 돌다가 "응답 없음"
+let freezeToastAt = 0;
+freezeEl.addEventListener("pointerdown", e => {
+  e.preventDefault();
+  const r = freezeEl.getBoundingClientRect(), k = r.width / (freezeEl.offsetWidth || r.width) || 1;
+  const sp = document.createElement("i");
+  sp.className = "tapspin";
+  sp.style.left = `${(e.clientX - r.left) / k}px`; sp.style.top = `${(e.clientY - r.top) / k}px`;
+  freezeEl.appendChild(sp);
+  setTimeout(() => sp.remove(), 1500);
+  if (Date.now() - freezeToastAt > 1800) {
+    freezeToastAt = Date.now();
+    setTimeout(() => toast((CFG.blackout && CFG.blackout.tapText) || "응답 없음"), 1100);
+  }
+});
+freezeEl.addEventListener("wheel", e => e.preventDefault(), { passive: false });
+
+/* =========================================================
    시간 흐름 (timeline)
    ========================================================= */
 let tlStart = 0;
@@ -1147,6 +1212,7 @@ function runEvent(ev) {
       if (!st.battery) shutdown();
       break;
     case "toast": toast(ev.text); break;
+    case "blackout": blackout(); break;
   }
 }
 
@@ -1165,7 +1231,7 @@ function tickTimeline() {
 
 function tickBattery() {
   const every = CFG.batteryDrainSec || 0;
-  if (!st.started || st.off || !every) return;
+  if (!st.started || st.off || st.dead || !every) return;   // 먹통 뒤에는 배터리가 더 줄지 않음
   if (elapsed() >= st.nextDrain) {
     st.nextDrain += every;
     st.battery = Math.max(0, st.battery - 1);
