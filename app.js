@@ -662,6 +662,30 @@ function rememberFacts(c, text) {
   if (SAID_WHO.test(text)) c.known.who = true;
   if (SAID_WHERE.test(text)) c.known.where = true;
 }
+/* "응 / ㅇㅇ / 아니" 같은 짧은 대답은 상대가 바로 전에 물은 말에 맞춰 뜻을 정함
+   (예: 민지 "자취방이야?" → 나 "ㅇㅇ" = 자취방에 있음 → imHome) */
+const YES_RE = /^(응|ㅇㅇ|ㅇ|어|웅|엉|ㅇㅋ|오키|맞아|그래|넹|네|넵|응응|ㅇㅇㅇ|어어|웅웅|맞음)[.!~ㅠㅜ]*$/;
+const NO_RE = /^(아니|ㄴㄴ|아니야|아닌데|노|놉|ㄴ|아냐|아님|아니요)[.!~ㅠㅜ]*$/;
+const CONTEXT = [                                      // 상대 질문에 이 말이 있으면 → [응일 때, 아니일 때]
+  { q: /자취방|집이|집에|방이|방에/, yes: "imHome", no: "askBackWhere" },
+  { q: /혼자/, yes: "alone", no: "withSomeone" },
+  { q: /괜찮|다친|무사/, yes: "fine", no: "hurt" },
+  { q: /지하|내려갔|대피했|대피소/, yes: "imSafe", no: "imHome" },
+  { q: /만날까|올래|올 수|오는|올수|와\?/, yes: "going", no: "cant" },
+  { q: /봤어|알아|들었어/, yes: "whatsHappening", no: "whatsHappening" }
+];
+const isQuestion = t => /\?\s*$|(지|니|냐|까|래\?)\s*$/.test(String(t).trim());
+function contextIntent(c, text) {
+  const t = squash(text);
+  const yes = YES_RE.test(t), no = NO_RE.test(t);
+  if (!yes && !no) return null;
+  const last = [...c.messages].reverse().find(m => !m.day && !m.me && m.text);   // 상대가 마지막에 한 말
+  if (!last || !isQuestion(last.text)) return null;
+  const hit = CONTEXT.find(x => x.q.test(last.text));
+  if (!hit) return null;
+  const negQ = /아니지|아니야\?|아니죠|않지|않았지/.test(last.text);     // "혼자 있는 거 아니지?" 에 "ㅇㅇ" = 혼자 아님
+  return (yes !== negQ) ? hit.yes : hit.no;
+}
 const asksKnown = (c, variant) => [].concat(variant).some(m => {
   const t = typeof m === "string" ? m : (m && m.text) || "";
   return (c.known.who && ASK_WHO.test(t)) || (c.known.where && ASK_WHERE.test(t));
@@ -676,6 +700,15 @@ function pickReply(c, text) {
     return list[i % list.length];
   };
   const own = c.replyRules || [];
+  // 0) 짧은 대답이면 앞 질문에 맞춘 뜻으로
+  const ctx = contextIntent(c, text);
+  if (ctx) {
+    if (ctx === "imHome" || ctx === "imSafe") c.known.where = true;
+    if (ctx === "alone" || ctx === "withSomeone") c.known.who = true;
+    const r = own.find(x => x.match === ctx) || RULES.find(x => x.name === ctx);
+    const v = r && take("g:" + ctx, variantsOf(r));
+    if (v) return v;
+  }
   for (let i = 0; i < own.length; i++) {
     if (typeof own[i].match !== "string" && ruleHit(own[i], text)) { const v = take("room" + i, variantsOf(own[i])); if (v) return v; }
   }
@@ -719,7 +752,7 @@ function sendMsg(c, text) {
 }
 
 async function replyFlow(c, reps) {
-  await sleep(900 + Math.random() * 800);
+  await sleep(600 + Math.random() * 700);
   if (st.off || st.down) return;
   c.messages.forEach(m => { if (m.me && !m.failed) m.read = true; });
   update();
@@ -727,9 +760,9 @@ async function replyFlow(c, reps) {
   for (const r of reps) {
     const msg = typeof r === "string" ? { text: r } : r;
     const from = msg.from || who;
-    await sleep(400);
+    await sleep(250);
     c.typing = true; c.typingFrom = from; update();
-    await sleep(Math.min(2500, 500 + String(msg.text).length * 45));
+    await sleep(Math.min(1800, 350 + String(msg.text).length * 35));
     c.typing = false;
     if (st.off) return;
     receive(c, { from, text: msg.text });
