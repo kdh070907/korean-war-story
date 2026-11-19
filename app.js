@@ -686,9 +686,12 @@ function contextIntent(c, text) {
   const negQ = /아니지|아니야\?|아니죠|않지|않았지/.test(last.text);     // "혼자 있는 거 아니지?" 에 "ㅇㅇ" = 혼자 아님
   return (yes !== negQ) ? hit.yes : hit.no;
 }
+// 이미 내가 답했거나, 상대가 이미 한 번 물어본 질문이면 이야기 진행용 답에서 다시 묻지 않음
+const askedBefore = (c, re) => c.messages.some(m => !m.me && !m.day && re.test(m.text || ""));
 const asksKnown = (c, variant) => [].concat(variant).some(m => {
   const t = typeof m === "string" ? m : (m && m.text) || "";
-  return (c.known.who && ASK_WHO.test(t)) || (c.known.where && ASK_WHERE.test(t));
+  return (ASK_WHO.test(t) && (c.known.who || askedBefore(c, ASK_WHO))) ||
+         (ASK_WHERE.test(t) && (c.known.where || askedBefore(c, ASK_WHERE)));
 });
 function pickReply(c, text) {
   if (st.down || c.sendFail || c.neverRead || c.noReply || c.noInput) return null;
