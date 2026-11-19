@@ -672,9 +672,10 @@ const CONTEXT = [                                      // 상대 질문에 이 �
   { q: /괜찮|다친|무사/, yes: "fine", no: "hurt" },
   { q: /지하|내려갔|대피했|대피소/, yes: "imSafe", no: "imHome" },
   { q: /만날까|올래|올 수|오는|올수|와\?/, yes: "going", no: "cant" },
+  { q: /피난|도망/, yes: "evacYes", no: "evacNo" },
   { q: /봤어|알아|들었어/, yes: "whatsHappening", no: "whatsHappening" }
 ];
-const isQuestion = t => /\?\s*$|(지|니|냐|까|래\?)\s*$/.test(String(t).trim());
+const isQuestion = t => /\?\s*$|(지|니|냐|까|래\?)\s*$/.test(String(t).trim());   // ? 로 끝나거나 ~지/~니/~냐/~까
 function contextIntent(c, text) {
   const t = squash(text);
   const yes = YES_RE.test(t), no = NO_RE.test(t);

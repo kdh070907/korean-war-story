@@ -92,6 +92,7 @@ window.STORY = {
     { name: "예린", number: "010-0289-6641" },
     { name: "김민지", number: "010-0647-2018" },
     { name: "이수빈", number: "010-0853-9126" },
+    { name: "박준혁", number: "010-0376-5148" },
     { name: "태호", number: "010-0902-4417" },
     { name: "자취방 집주인", number: "010-0311-7768" }
   ],
@@ -287,6 +288,38 @@ window.STORY = {
       fallback: ["ㅇㅇ 진짜 조심해", "무슨 일 있으면 바로 연락해!!"]
     },
     {
+      // 박준혁: 친한 남자애 (같은 과)
+      id: "junhyuk", title: "박준혁",
+      messages: [
+        { day: "11월 3일 화요일" },
+        { from: "박준혁", text: "과톡에 축구 사람 구하는 거 봤냐 ㅋㅋ", time: "22:45" },
+        { me: true, text: "ㅇㅇ 너 가?", time: "22:47" },
+        { from: "박준혁", text: "ㅇㅇ 토요일에 감 ㅋㅋ", time: "22:48" }
+      ],
+      replies: [
+        ["야 니 진짜 괜찮냐", "다친 데 없지"],
+        ["우리 동네 사이렌 계속 울림", "폰 배터리 아껴라"]
+      ],
+      replyRules: [
+        { match: "swear", replies: [["야 니 왜 그래", "혼란스러운 거 아는데 이럴 때일수록 침착해야지"]] },
+        { match: "askOk", replies: [["몰라 일단 살아는 있다", "니는 괜찮냐??"]] },
+        { match: "askWhere", replies: [["나 자취방 근처 지하주차장", "사람 개많음"]] },
+        { match: "askWho", replies: [["룸메랑 같이 있음", "니는?"]] },
+        { match: "scared", replies: [["나도 개무섭다 진짜", "일단 버티자"]] },
+        { match: "going", replies: [["조심해서 가라 진짜", "도착하면 톡해"]] },
+        { match: "alone", replies: [["혼자면 더 위험하다", "사람 많은 데로 가라 빨리"]] },
+        { match: "withSomeone", replies: [["ㅇㅋ 다행이다", "같이 붙어 있어라"]] },
+        { match: "imHome", replies: [["야 거기 있지 말고 지하로 내려가라 빨리", "건물 지하 있잖아"]] },
+        { match: "imSafe", replies: [["ㅇㅋ 거기 있어 나가지 말고"]] },
+        { match: "whatsHappening", replies: [["몰라 뉴스 보니까 진짜 터졌대", "아 미치겠다 진짜"]] },
+        { match: "evac", replies: [["근데 어디로 가냐 길 다 막혔대", "일단 지하에 있는 게 낫겠지"]] },
+        { match: "evacYes", replies: [["근데 어디로 가냐…", "고속도로 다 막혔대"]] },
+        { match: "evacNo", replies: [["ㅇㅇ 그치 일단 지하에 있자", "움직이면 더 위험할 듯"]] },
+        { match: "yes", replies: [["ㅇㅇ 조심해라"]] }
+      ],
+      fallback: ["ㅇㅇ", "아 미치겠네 진짜", "계속 연락해라"]
+    },
+    {
       // 태호: 군대 간 남자친구. 전쟁이 터진 뒤로 폰을 볼 수 없어 답장도 읽음도 끝까지 없음
       id: "taeho", title: "태호 ❤️", neverRead: true,
       messages: [
@@ -314,17 +347,12 @@ window.STORY = {
       // 과 단톡(70명): 전쟁 전 평범한 대화에서 멈춘 방 (전쟁 뒤엔 아무도 안 씀)
       id: "dept", title: "26학번 산업경영공학과 (70)", group: true, noReply: true,
       messages: [
-        { day: "11월 2일 월요일" },
-        { from: "박서연", text: "📢 과대입니다! 다음 주 목요일 과 MT 있어요. 참석 여부 투표 부탁드려요", time: "19:02" },
+        { day: "11월 3일 화요일" },
         { from: "한지훈", text: "열린경영학 족보 구합니다", time: "20:15" },
         { from: "오세린", text: "혹시 일반생물 족보 있으신 분 있나요?", time: "20:15" },
         { from: "문태양", text: "일물 족보 삽니다", time: "20:49" },
         { from: "문태양", text: "구매완료", time: "20:51" },
         { from: "장민석", text: "일반물리학 교재 남는 분 계신가요?", time: "20:59" },
-        { day: "11월 3일 화요일" },
-        { from: "김도윤", text: "기프 과제 3번 출력 형식 어떻게 하는지 아는 사람?", time: "22:14" },
-        { from: "이현우", text: "공지 보니까 예시대로만 맞추면 된대", time: "22:16" },
-        { from: "김도윤", text: "ㄳㄳ", time: "22:16" },
         { from: "윤가은", text: "이번주 토요일에 축구하실 2~3명 문자주세요\n실력 상관없습니다", time: "22:41" }
       ],
       replies: []
@@ -442,6 +470,8 @@ window.STORY = {
     // 누구랑 있는지 물을 때
     { name: "askWho", match: ["누구랑", "누구있"],
       replies: [["사람들이랑 같이 있어", "모르는 사람들 엄청 많아"]] },
+    { name: "evac", match: ["피난", "도망", "떠나야", "떠날까"],
+      replies: [["어디로 가 근데 길 다 막혔대", "일단 지하에 있자"]] },
     { name: "scared", match: ["무서", "무섭", "겁나", "떨려", "울어", "울고", "눈물", "살려"],
       replies: [["나도 무서워ㅠㅠ", "울지 마 같이 버티자 제발"], ["괜찮아 괜찮아", "숨 크게 쉬어 나 여기 있어"]],
       groupReplies: [["지우야 괜찮아 우리 다 여기 있어"]] },
@@ -481,6 +511,8 @@ window.STORY = {
     //   (예: "자취방이야?" 에 "아니" → askBackWhere, "괜찮아?" 에 "아니" → hurt)
     { name: "askBackWhere", replies: [["그럼 어디야 지금??", "밖이면 빨리 아무 건물 지하로 들어가"]] },
     { name: "hurt", replies: [["어디 다쳤어??", "움직일 수 있으면 지하로 가 빨리ㅠㅠ"]] },
+    { name: "evacYes", replies: [["근데 어디로 가…", "길 다 막혔대"]] },
+    { name: "evacNo", replies: [["그치 일단 지하에 있자", "움직이면 더 위험할 거야"]] },
     { name: "yes", exact: ["응", "ㅇㅇ", "ㅇㅋ", "오키", "오케이", "알겠어", "알았어", "알겠음", "웅", "응응", "넹", "네", "넵", "그래", "ㅇㅇㅇ", "ㄱㄱ", "ㅇ"],
       replies: [["ㅇㅇ 진짜 조심해ㅠ"], ["알겠어 계속 연락해 제발"]] },
     { name: "no", exact: ["아니", "ㄴㄴ", "아니야", "노", "놉", "아냐", "아님"],
@@ -666,7 +698,7 @@ window.STORY = {
               "학교 건물 지하가 대피소래. 거기로 가", "물이랑 보조배터리 꼭 챙기고", { wait: 1000 }, "지우야? 엄마 말 들려? 여보세요?", { wait: 1000 }],
       ifMissed: { chat: "mom", text: "왜 안 받아… 제발 받아" } },
 
-    // 0분 45초 ~: 휴교령, 친구들, 학교 공지, 예린 전화, 언니 전화
+    // 0분 45초 ~: 휴교령, 친구들, 학교 공지, 예린 전화, 준혁 문자
     { at: "0:45", type: "news", id: "a3" },
     { at: "0:52", type: "message", chat: "yerin", from: "예린", text: "지우야 답장 좀" },
     { at: "0:55", type: "message", chat: "subin", from: "이수빈", text: "지우야 너 누구랑 있어?" },
@@ -681,10 +713,9 @@ window.STORY = {
 
 
     // 1분 50초 ~
-    { at: "1:45", type: "call", from: "언니", ring: 12000,
-      lines: ["너 어디야", "괜찮아?", { me: "언니! 나 괜찮아. 자취방이야" }, "엄마랑 나는 아파트 지하주차장이야", "사람들 엄청 많아. 다들 휴대폰만 보고 있어",
-              { me: "언니가 엄마 옆에 꼭 붙어 있어" }, "너 혼자 있지 말고 학교 지하로 가", { wait: 1000 }, { me: "…응. 언니도 조심해" }, "끝나면 바로 보자. 약속해", { wait: 600 }],
-      ifMissed: { chat: "family", text: "너 왜 전화 안 받아" } },
+    { at: "1:30", type: "message", chat: "junhyuk", from: "박준혁", text: "야 니 집이냐?" },
+    { at: "1:34", type: "message", chat: "junhyuk", from: "박준혁", text: "아 미치겠네 이거" },
+    { at: "1:38", type: "message", chat: "junhyuk", from: "박준혁", text: "우리 피난가야되는 거 아니냐" },
     { at: "1:50", type: "message", chat: "minji", from: "김민지", text: "우리 긱사 지하로 다 내려옴" },
     { at: "1:53", type: "message", chat: "minji", from: "김민지", text: "여기 사람 개많아 너도 일로와 얼른" },
 
