@@ -34,10 +34,10 @@ const ampm = d => `${d.getHours() < 12 ? "오전" : "오후"} ${clock12(d)}`;
 const hhmm = d => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 const dateLabel = d => `${d.getMonth() + 1}월 ${d.getDate()}일 ${DAYS[d.getDay()]}요일`;
 const fmtTime = t => {
-  const m = /^(\d{1,2}):(\d{2})$/.exec(String(t || ""));
+  const m = /^(어제\s*)?(\d{1,2}):(\d{2})$/.exec(String(t || "").trim());   // "02:31", "어제 20:31"
   if (!m) return t || "";
-  const H = +m[1];
-  return `${H < 12 ? "오전" : "오후"} ${H % 12 || 12}:${m[2]}`;
+  const H = +m[2];
+  return `${m[1] ? "어제 " : ""}${H < 12 ? "오전" : "오후"} ${H % 12 || 12}:${m[3]}`;
 };
 const durText = ms => { const s = Math.round(ms / 1000); return `${Math.floor(s / 60)}분 ${s % 60}초`; };
 const formatNum = n => {
