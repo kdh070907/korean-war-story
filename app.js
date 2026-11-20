@@ -685,11 +685,18 @@ function contextIntent(c, text) {
   const t = squash(text);
   const yes = YES_RE.test(t), no = NO_RE.test(t);
   if (!yes && !no) return null;
-  const last = [...c.messages].reverse().find(m => !m.day && !m.me && m.text);   // 상대가 마지막에 한 말
-  if (!last || !isQuestion(last.text)) return null;
+  // 내가 마지막으로 말한 뒤에 상대가 보낸 말들 중, 가장 최근의 질문 (예: "야 니 집이냐?" 뒤에 "아 ㅅㅂ제발" 이 와도 질문 쪽으로)
+  const block = [];
+  for (const m of c.messages.slice(0, -1).reverse()) {      // 맨 끝(방금 보낸 내 말)은 빼고
+    if (m.day) continue;
+    if (m.me) break;
+    if (m.text) block.push(m);
+  }
+  const last = block.find(m => isQuestion(m.text) && CONTEXT.some(x => x.q.test(m.text)));
+  if (!last) return null;
   const hit = CONTEXT.find(x => x.q.test(last.text));
-  if (!hit) return null;
-  const negQ = /아니지|아니야\?|아니죠|않지|않았지/.test(last.text);     // "혼자 있는 거 아니지?" 에 "ㅇㅇ" = 혼자 아님
+  // "혼자 있는 거 아니지?" 에 "ㅇㅇ" = 혼자 아님 (반대로 읽기). "~가야 하는 거 아니야??" 는 권유라서 그대로
+  const negQ = /아니지|아니죠|않지|않았지/.test(last.text);
   return (yes !== negQ) ? hit.yes : hit.no;
 }
 // 이미 내가 답했거나, 상대가 이미 한 번 물어본 질문이면 이야기 진행용 답에서 다시 묻지 않음

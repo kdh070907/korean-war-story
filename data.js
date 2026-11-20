@@ -722,8 +722,8 @@ window.STORY = {
 
     // 0분 45초 ~: 휴교령, 친구들, 학교 공지, 민지 전화, 준혁 문자
     { at: "0:45", type: "news", id: "a3" },
-    { at: "0:55", type: "message", chat: "subin", from: "이수빈", text: "태린아 너 누구랑 있어?" },
-    { at: "0:58", type: "message", chat: "subin", from: "이수빈", text: "혼자 있는 거 아니지?" },
+    { at: "0:55", type: "message", chat: "subin", from: "이수빈", text: "태린아 너 누구랑 있어" },
+    { at: "0:58", type: "message", chat: "subin", from: "이수빈", text: "아 미친 우리 피난가야하는 거 아니야??" },
     { at: "1:05", type: "notice", title: "[긴급] 휴교 및 기숙사 지하 대피 안내", dept: "총장실", important: true,
       body: "교육부 휴교령에 따라 오늘부로 휴교합니다.\n기숙사 거주생은 사감의 안내에 따라 지하 시설로 이동하십시오.\n자취생은 가까운 민방위 대피시설을 이용하십시오." },
     { at: "1:05", type: "call", from: "김민지", ring: 12000,
@@ -736,8 +736,8 @@ window.STORY = {
 
     // 1분 50초 ~
     { at: "1:30", type: "message", chat: "junhyuk", from: "박준혁", text: "야 니 집이냐?" },
-    { at: "1:34", type: "message", chat: "junhyuk", from: "박준혁", text: "아 미치겠네 이거" },
-    { at: "1:38", type: "message", chat: "junhyuk", from: "박준혁", text: "우리 피난가야되는 거 아니냐" },
+    { at: "1:34", type: "message", chat: "junhyuk", from: "박준혁", text: "아시발좆됐다 나 끌려갈 거 같은데" },
+    { at: "1:38", type: "message", chat: "junhyuk", from: "박준혁", text: "아 ㅅㅂ제발" },
     { at: "1:50", type: "message", chat: "minji", from: "김민지", text: "우리 긱사 지하로 다 내려옴" },
     { at: "1:53", type: "message", chat: "minji", from: "김민지", text: "여기 사람 개많아 너도 일로와 얼른" },
 
