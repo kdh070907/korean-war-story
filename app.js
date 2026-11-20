@@ -732,7 +732,7 @@ function pickReply(c, text) {
     const r = RULES[i];
     if (!ruleHit(r, text)) continue;
     const mine = r.name && own.find(x => x.match === r.name);       // 이 방 사람 말투
-    const v = take("g:" + (r.name || i), variantsOf(mine || r));
+    const v = take("g:" + ((mine && mine.share) || r.name || i), variantsOf(mine || r));   // share: 다른 규칙과 답 순서 같이 씀
     if (v) return v;
   }
   const story = c.replies || [];
@@ -767,7 +767,13 @@ function sendMsg(c, text) {
   replyFlow(c, Array.isArray(reps) ? reps : [reps]);
 }
 
-async function replyFlow(c, reps) {
+/* 한 방의 답장·이야기 문자는 차례로: 답하는 도중에 온 문자는 답이 끝난 뒤에 이어서 */
+function queueInChat(c, job) {
+  c.q = (c.q || 0) + 1;
+  c.flow = (c.flow || Promise.resolve()).then(job).catch(() => {}).then(() => { c.q--; });
+}
+function replyFlow(c, reps) { queueInChat(c, () => runReply(c, reps)); }
+async function runReply(c, reps) {
   await sleep(600 + Math.random() * 700);
   if (st.off || st.down) return;
   c.messages.forEach(m => { if (m.me && !m.failed) m.read = true; });
@@ -1395,7 +1401,9 @@ function runEvent(ev) {
   switch (ev.type) {
     case "message": {
       const c = chatById(ev.chat) || newChat(ev);
-      receive(c, { from: ev.from || c.title, text: ev.text });
+      const msg = { from: ev.from || c.title, text: ev.text };
+      if (c.q) queueInChat(c, () => sleep(900).then(() => receive(c, msg)));   // 그 방에서 답하는 중이면 끝난 뒤에
+      else receive(c, msg);
       break;
     }
     case "alert": showAlert(ev); break;
