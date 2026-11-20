@@ -157,6 +157,7 @@ window.STORY = {
         { match: "imSafe", replies: [["잘했어 태린아", "거기 꼭 있어. 엄마가 계속 연락할게"]] },
         { match: "askBackWhere", replies: [["그럼 어디야??", "빨리 말해 태린아"]] },
         { match: "hurt", replies: [["어디 다쳤어?? 태린아", "많이 다쳤어? 대답해"]] },
+        { match: "whatWhat", replies: [["엄마도 모르겠어", "뉴스에서 전쟁 난 것 같대 태린아"]] },
         { match: "whatsHappening", replies: [["엄마도 모르겠어", "뉴스 계속 보는데 손이 떨려"]] },
         { match: "taeho", replies: [["태호는 아직 연락 없니?", "그 애도 무사해야 할 텐데"]] },
         { match: "love", replies: [["엄마도 사랑해 태린아", "꼭 다시 보자"]] },
@@ -199,6 +200,7 @@ window.STORY = {
         { match: "imSafe", replies: [[{ from: "엄마", text: "잘했어" }, { from: "아빠", text: "거기서 움직이지 마라. 아빠가 갈게" }]] },
         { match: "askBackWhere", replies: [[{ from: "아빠", text: "그럼 어디냐?" }, { from: "엄마", text: "빨리 말해 태린아" }]] },
         { match: "hurt", replies: [[{ from: "엄마", text: "태린아 어디 다쳤어??" }, { from: "아빠", text: "움직일 수 있으면 지하로 가" }]] },
+        { match: "whatWhat", replies: [[{ from: "언니", text: "나도 모르겠어" }, { from: "언니", text: "이거 진짜 전쟁 난 거 같은데" }]] },
         { match: "whatsHappening", replies: [[{ from: "언니", text: "나도 모르겠어 뉴스 계속 보는 중" }]] },
         { match: "taeho", replies: [[{ from: "언니", text: "군인들 연락 다 끊겼대" }, { from: "엄마", text: "태호도 무사할 거야" }]] },
         { match: "love", replies: [[{ from: "엄마", text: "엄마도 사랑해" }, { from: "언니", text: "나도ㅠ" }]] },
@@ -263,7 +265,8 @@ window.STORY = {
         { match: "withSomeone", replies: [["그나마 다행이다ㅠ", "같이 꼭 붙어 있어"]] },
         { match: "imHome", replies: [["야 거기 있지 말고 빨리 지하로 내려가!!", "방에 있으면 위험하대"]] },
         { match: "imSafe", replies: [["ㅇㅋ 거기 있어 움직이지 마"]] },
-        { match: "askBackWhere", replies: [["그럼 어디야??"]] }
+        { match: "askBackWhere", replies: [["그럼 어디야??"]] },
+        { match: "whatWhat", replies: [["나도 모르겠어", "이거 진짜 전쟁난 거 같은데"], ["뉴스 봐봐 빨리", "사이렌도 계속 울려"]] }
       ],
       fallback: ["ㅇㅋ 계속 연락해!!", "배터리 아껴 진짜"]
     },
@@ -323,6 +326,7 @@ window.STORY = {
         { match: "withSomeone", replies: [["ㅇㅋ 그나마 낫네", "같이 붙어 있어라"]] },
         { match: "imHome", replies: [["야 거기 있지 말고 지하로 내려가라 빨리", "건물 지하 있잖아"]] },
         { match: "imSafe", replies: [["ㅇㅋ 거기 있어 나가지 말고"]] },
+        { match: "whatWhat", replies: [["나도 모름", "이거 ㄹㅇ 전쟁 난 거 같은데"]] },
         { match: "whatsHappening", replies: [["몰라 뉴스 보니까 진짜 터졌대", "아 미치겠다 진짜"]] },
         { match: "evac", replies: [["근데 어디로 가냐 길 다 막혔대", "일단 지하에 있는 게 낫겠지"]] },
         { match: "evacYes", replies: [["근데 어디로 가냐…", "고속도로 다 막혔대"]] },
@@ -507,6 +511,10 @@ window.STORY = {
     // 내가 안전한 곳(지하·대피소)에 있다고 할 때
     { name: "imSafe", match: ["지하", "대피소", "주차장", "대피했", "대피중", "도착했"],
       replies: [["잘했어 거기 꼭 있어", "절대 밖에 나가지 마"], ["거기서 움직이지 마", "밖에 계속 쿵쿵 소리 난대"]] },
+    // 상대 말에 되물을 때 ("뭐가", "뭔데", "왜?", "??")
+    { name: "whatWhat", match: ["뭐가", "뭔데", "뭔소리", "무슨소리", "무슨말", "뭔말"],
+      exact: ["뭐", "뭐?", "뭐??", "왜", "왜?", "왜??", "왜그래", "왜그래?", "뭐지", "뭐지?", "응?", "응??", "엥", "엥?", "어?", "어??", "?", "??", "???"],
+      replies: [["나도 모르겠어", "이거 진짜 전쟁난 거 같은데"], ["뉴스 봐봐 진짜야", "재난문자도 계속 오잖아"]] },
     { name: "whatsHappening", match: ["뭐야", "무슨일", "전쟁", "진짜야", "실화", "어떡해", "어떡하지", "어떻게해", "어케"],
       replies: [["나도 몰라ㅠㅠ 뉴스 보니까 진짜래", "재난문자 계속 와"], ["미친 거 같아 진짜", "일단 침착하자 제발"]] },
     { name: "taeho", match: ["태호"],
@@ -537,7 +545,7 @@ window.STORY = {
       replies: [["ㅇㅇ 진짜 조심해ㅠ"], ["알겠어 계속 연락해 제발"]] },
     { name: "no", exact: ["아니", "ㄴㄴ", "아니야", "노", "놉", "아냐", "아님"],
       replies: [["응?? 뭐가 아니야ㅠ", "지금 괜찮은 거 맞지?"], ["알겠어… 진짜 조심해"]] },
-    { name: "huh", exact: ["?", "??", "???", "헐", "ㅁㅊ"],
+    { name: "huh", exact: ["헐", "ㅁㅊ"],
       replies: [["왜 무슨 일 있어??"], ["…진짜 이게 무슨 일이야"]] }
   ],
   fallback: ["ㅠㅠ 지금 정신없어", "제발 계속 연락해", "무서워 진짜", "폰 놓지 마 계속 연락해"],
