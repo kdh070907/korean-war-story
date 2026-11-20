@@ -78,7 +78,7 @@ window.STORY = {
 
   appMessages: {
     camera: "카메라를 시작할 수 없습니다.",
-    clock: "알람: 오전 8:00 (1교시 기초프로그래밍)",
+    clock: "알람: 오전 8:00 기상",
     settings: "설정을 열 수 없습니다."
   },
 
