@@ -1322,7 +1322,7 @@ function showEnding() {
     if (e.target.closest(".ending-replay") || !started) return;
     next();
   });
-  setTimeout(() => { started = true; next(); }, 2200);  // 화면이 다 꺼진 뒤 첫 줄
+  setTimeout(() => { started = true; next(); }, 1600);  // 화면이 거의 다 꺼지면 첫 줄
 }
 
 /* =========================================================
