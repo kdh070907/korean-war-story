@@ -761,6 +761,6 @@ html.ios body { font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic
 .ios .alertbox .bd { padding: 14px 18px 18px; color: #1c1c1e; }
 .ios .alertbox .ft button { color: var(--danger); font-weight: 700; }
 
-/* ---------- 속보 알림: 빨간 테두리로 눈에 띄게, 8초 동안 유지 ---------- */
+/* ---------- 속보 알림: 빨간 테두리로 눈에 띄게, 6초 동안 유지 ---------- */
 .banner.important .ncard { box-shadow: 0 0 0 2px var(--danger), 0 10px 30px rgba(0,0,0,.4); }
 .banner.important .ncard b { color: #ff8b92; }

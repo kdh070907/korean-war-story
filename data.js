@@ -714,59 +714,59 @@ window.STORY = {
     { at: "0:12", type: "message", chat: "minji", from: "김민지", text: "야 너 어디야" },
     { at: "0:15", type: "message", chat: "minji", from: "김민지", text: "ㅁㅊ 이거 뭐야" },
     { at: "0:17", type: "news", id: "a1" },            // 새날일보 첫 속보 알림 (눌러서 기사 보기)
-    { at: "0:20", type: "message", chat: "mom", from: "엄마", text: "태린아 제발" },
-    { at: "0:26", type: "call", from: "엄마", ring: 12000,
+    { at: "0:26", type: "message", chat: "mom", from: "엄마", text: "태린아 제발" },
+    { at: "0:32", type: "call", from: "엄마", ring: 12000,
       lines: ["태린아!! 태린아, 엄마야", { me: "엄마, 나 괜찮아" }, "아이고… 다행이다… 지금 어디야", { me: "자취방. 밖에 사이렌 계속 울려" },
               "학교 건물 지하가 대피소래. 거기로 가", "물이랑 보조배터리 꼭 챙기고", { wait: 1000 }, "태린아? 엄마 말 들려? 여보세요?", { wait: 1000 }],
       ifMissed: { chat: "mom", text: "왜 안 받아… 제발 받아" } },
 
-    // 0분 45초 ~: 휴교령, 친구들, 학교 공지, 민지 전화, 준혁 문자
-    { at: "0:45", type: "news", id: "a3" },
-    { at: "0:55", type: "message", chat: "subin", from: "이수빈", text: "태린아 너 누구랑 있어" },
-    { at: "0:58", type: "message", chat: "subin", from: "이수빈", text: "아 미친 우리 피난가야하는 거 아니야??" },
-    { at: "1:05", type: "notice", title: "[긴급] 휴교 및 기숙사 지하 대피 안내", dept: "총장실", important: true,
+    // 0분 51초 ~: 휴교령, 친구들, 학교 공지, 민지 전화, 준혁 문자
+    { at: "0:51", type: "news", id: "a3" },
+    { at: "1:01", type: "message", chat: "subin", from: "이수빈", text: "태린아 너 누구랑 있어" },
+    { at: "1:04", type: "message", chat: "subin", from: "이수빈", text: "아 미친 우리 피난가야하는 거 아니야??" },
+    { at: "1:11", type: "notice", title: "[긴급] 휴교 및 기숙사 지하 대피 안내", dept: "총장실", important: true,
       body: "교육부 휴교령에 따라 오늘부로 휴교합니다.\n기숙사 거주생은 사감의 안내에 따라 지하 시설로 이동하십시오.\n자취생은 가까운 민방위 대피시설을 이용하십시오." },
-    { at: "1:05", type: "call", from: "김민지", ring: 12000,
+    { at: "1:11", type: "call", from: "김민지", ring: 12000,
       lines: ["야 이태린!!", "너 왜 답장을 안 해 괜찮아?", { me: "나 괜찮아… 너는?" }, "몰라 지금 다들 지하로 내려가는 중이야",
               "사이렌 계속 울리고 애들 울고 난리 났어", { me: "나도 그쪽으로 갈까?" }, "밖에 위험하대 일단 너네 건물 지하로 가",
               "끊기 전에 말할게… 꼭 살아서 보자", { wait: 600 }],
       ifMissed: { chat: "minji", text: "왜 안 받아ㅠㅠ 문자라도 해 제발" } },
-    { at: "1:12", type: "message", chat: "alba", from: "매니저님", text: "다들 빨리 대피하세요!! 가게 걱정은 하지 말고" },
+    { at: "1:18", type: "message", chat: "alba", from: "매니저님", text: "다들 빨리 대피하세요!! 가게 걱정은 하지 말고" },
 
 
-    // 1분 50초 ~
-    { at: "1:30", type: "message", chat: "junhyuk", from: "박준혁", text: "야 니 집이냐?" },
-    { at: "1:34", type: "message", chat: "junhyuk", from: "박준혁", text: "아시발좆됐다 나 끌려갈 거 같은데" },
-    { at: "1:38", type: "message", chat: "junhyuk", from: "박준혁", text: "아 ㅅㅂ제발" },
-    { at: "1:50", type: "message", chat: "minji", from: "김민지", text: "우리 긱사 지하로 다 내려옴" },
-    { at: "1:53", type: "message", chat: "minji", from: "김민지", text: "여기 사람 개많아 너도 일로와 얼른" },
+    // 1분 56초 ~
+    { at: "1:36", type: "message", chat: "junhyuk", from: "박준혁", text: "야 니 집이냐?" },
+    { at: "1:40", type: "message", chat: "junhyuk", from: "박준혁", text: "아시발좆됐다 나 끌려갈 거 같은데" },
+    { at: "1:44", type: "message", chat: "junhyuk", from: "박준혁", text: "아 ㅅㅂ제발" },
+    { at: "1:56", type: "message", chat: "minji", from: "김민지", text: "우리 긱사 지하로 다 내려옴" },
+    { at: "1:59", type: "message", chat: "minji", from: "김민지", text: "여기 사람 개많아 너도 일로와 얼른" },
 
     // 2분대: 가족방, 기사, 통신 장애 재난문자
-    { at: "2:00", type: "message", chat: "family", from: "엄마", text: "엄마랑 지민이는 아파트 지하주차장이야" },
-    { at: "2:03", type: "message", chat: "family", from: "아빠", text: "아빠는 태린이 쪽으로 가는 중. 길이 다 막혔다" },
-    { at: "2:10", type: "news", id: "a4" },
-    { at: "2:15", type: "message", chat: "subin", from: "이수빈", text: "야 답 좀 해 걱정되잖아" },
-    { at: "2:20", type: "network", signal: 2, label: "3G" },
-    { at: "2:25", type: "alert", text: "[국가비상대책본부] 수도권 일부 지역 통신 장애 발생. 가족과 만날 장소를 미리 정하고, 가까운 지하 대피시설에 머무르십시오." },
-    { at: "2:30", type: "news", id: "a6" },
+    { at: "2:06", type: "message", chat: "family", from: "엄마", text: "엄마랑 지민이는 아파트 지하주차장이야" },
+    { at: "2:09", type: "message", chat: "family", from: "아빠", text: "아빠는 태린이 쪽으로 가는 중. 길이 다 막혔다" },
+    { at: "2:16", type: "news", id: "a4" },
+    { at: "2:21", type: "message", chat: "subin", from: "이수빈", text: "야 답 좀 해 걱정되잖아" },
+    { at: "2:26", type: "network", signal: 2, label: "3G" },
+    { at: "2:31", type: "alert", text: "[국가비상대책본부] 수도권 일부 지역 통신 장애 발생. 가족과 만날 장소를 미리 정하고, 가까운 지하 대피시설에 머무르십시오." },
+    { at: "2:36", type: "news", id: "a6" },
 
-    // 2분 35초 ~: 아빠 전화
-    { at: "2:35", type: "call", from: "아빠", ring: 12000,
+    // 2분 41초 ~: 아빠 전화
+    { at: "2:41", type: "call", from: "아빠", ring: 12000,
       lines: ["태린아! 아빠야", { me: "아빠!" }, "다친 데 없지? 지금 어디야", { me: "자취방이야" }, "학교 지하로 가. 지금 바로.", { wait: 900 }, "엄마랑 지민이는 괜찮", { wait: 600 }, "…"],
       ifMissed: { chat: "family", text: "태린아 전화 좀 받아라" } },
-    { at: "2:55", type: "trending", list: ["전쟁", "북한침공", "통신 장애", "이진우", "서울 대피소", "공습경보", "장병 휴가 통제", "대피소", "대피소 위치", "정전"] },
+    { at: "3:01", type: "trending", list: ["전쟁", "북한침공", "통신 장애", "이진우", "서울 대피소", "공습경보", "장병 휴가 통제", "대피소", "대피소 위치", "정전"] },
 
     // 3분대: 신호 약해짐, 엄마 전화(잘 안 들림), 통신 시설 피격 속보
-    { at: "3:10", type: "network", signal: 1, label: "3G" },
-    { at: "3:15", type: "call", from: "엄마", ring: 10000,
+    { at: "3:16", type: "network", signal: 1, label: "3G" },
+    { at: "3:21", type: "call", from: "엄마", ring: 10000,
       lines: ["태린아? …들려?", { me: "엄마! 응, 들려!" }, "…학교로 …지금 바로…", { wait: 1000 }, "…ㅇ…", { wait: 1000 }],
       ifMissed: { chat: "mom", text: "전화가 자꾸 끊겨" } },
-    { at: "3:35", type: "message", chat: "family", from: "아빠", text: "태린이 연락 오면 바로 알려" },
-    { at: "3:40", type: "message", chat: "minji", from: "김민지", text: "나 배터리 9퍼 남음 이따 꼭 연락해" },
+    { at: "3:41", type: "message", chat: "family", from: "아빠", text: "태린이 연락 오면 바로 알려" },
+    { at: "3:46", type: "message", chat: "minji", from: "김민지", text: "나 배터리 9퍼 남음 이따 꼭 연락해" },
 
-    { at: "3:45", type: "news", id: "a8" },
+    { at: "3:51", type: "news", id: "a8" },
 
-    // 3분 55초: 통신 시설 폭격 → 먹통 (마지막)
-    { at: "3:55", type: "blackout" }
+    // 4분 1초: 통신 시설 폭격 → 먹통 (마지막)
+    { at: "4:01", type: "blackout" }
   ]
 };

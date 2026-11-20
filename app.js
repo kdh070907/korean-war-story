@@ -341,7 +341,7 @@ let bannerT, bannerSeq = 0, bannerHoldUntil = 0;
 function showBanner(n) {
   if (!n.important && Date.now() < bannerHoldUntil) return;   // 속보 알림이 떠 있는 동안은 덮지 않음
   const seq = ++bannerSeq;
-  const ms = n.important ? 8000 : 4000;
+  const ms = n.important ? 6000 : 4000;           // 속보 알림은 6초
   if (n.important) bannerHoldUntil = Date.now() + ms;
   bannerEl.classList.toggle("important", !!n.important);
   bannerEl.innerHTML = ncardHTML(n);
