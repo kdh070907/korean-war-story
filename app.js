@@ -52,6 +52,7 @@ const ICON = {
   talk: '<path d="M21 11.5c0 4.4-4 8-9 8-1.3 0-2.6-.2-3.7-.7L3 20.5l1.6-4.2A7.6 7.6 0 0 1 3 11.5c0-4.4 4-8 9-8s9 3.6 9 8z"/>',
   sms: '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 7l8.5 6 8.5-6"/>',
   news: '<rect x="4" y="4" width="16" height="16" rx="2.5"/><path d="M8 8.5h8M8 12h8M8 15.5h5"/>',
+  logoN: '<path d="M7.5 18V6l9 12V6" stroke-width="3"/>',
   school: '<path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c3.5 2.5 8.5 2.5 12 0v-5"/><path d="M22 9v6"/>',
   map: '<path d="M12 21s-7-6.2-7-11.5a 7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
   gallery: '<rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.5" cy="9.5" r="1.8"/><path d="M21 15.5l-5-5-9.5 9.5"/>',
@@ -83,7 +84,7 @@ const APPS = {
   phone:    { name: "전화",   icon: "phone",    bg: "linear-gradient(160deg,#4cd964,#1f9d47)", open: () => phoneApp("recent") },
   talk:     { name: "톡",     icon: "talk",     bg: "linear-gradient(160deg,#8b6dff,#5a3be0)", open: () => chatList("talk") },
   sms:      { name: "메시지", icon: "sms",      bg: "linear-gradient(160deg,#5b9bff,#2d63e0)", open: () => chatList("sms") },
-  news:     { name: (S.news && S.news.portal) || "뉴스", icon: "news", bg: "linear-gradient(160deg,#ff7b5c,#e5482b)", open: () => newsHome() },
+  news:     { name: (S.news && S.news.portal) || "뉴스", icon: "logoN", bg: "linear-gradient(160deg,#1ed760,#03b14f)", open: () => newsHome() },
   school:   { name: "학교",   icon: "school",   bg: "linear-gradient(160deg,#c0283a,#6e0f1c)", open: () => schoolHome() },
   map:      { name: "지도",   icon: "map",      bg: "linear-gradient(160deg,#22c3b3,#0e8c80)", open: () => mapApp() },
   gallery:  { name: "갤러리", icon: "gallery",  bg: "linear-gradient(160deg,#f783ac,#d6336c)", open: () => galleryHome() },
@@ -336,9 +337,13 @@ const ncardHTML = n => {
     `<span class="tx"><span class="top"><span>${esc(appName(n.app))}</span><span>${esc(n.when || "지금")}</span></span>` +
     `<b>${esc(n.title)}${n.count > 1 ? ` <small>(${n.count})</small>` : ""}</b><span class="msg">${esc(n.text)}</span></span></button>`;
 };
-let bannerT, bannerSeq = 0;
+let bannerT, bannerSeq = 0, bannerHoldUntil = 0;
 function showBanner(n) {
+  if (!n.important && Date.now() < bannerHoldUntil) return;   // 속보 알림이 떠 있는 동안은 덮지 않음
   const seq = ++bannerSeq;
+  const ms = n.important ? 8000 : 4000;
+  if (n.important) bannerHoldUntil = Date.now() + ms;
+  bannerEl.classList.toggle("important", !!n.important);
   bannerEl.innerHTML = ncardHTML(n);
   bannerEl.classList.remove("out"); bannerEl.hidden = false;
   layoutBanner();
@@ -348,9 +353,9 @@ function showBanner(n) {
   bannerT = setTimeout(() => {
     bannerEl.classList.add("out");
     setTimeout(() => { if (seq === bannerSeq) { bannerEl.hidden = true; bannerEl.classList.remove("out"); } }, 250);
-  }, 4000);
+  }, ms);
 }
-function hideBanner() { clearTimeout(bannerT); bannerSeq++; bannerEl.hidden = true; }
+function hideBanner() { clearTimeout(bannerT); bannerSeq++; bannerHoldUntil = 0; bannerEl.hidden = true; }
 
 function addLockNoti(n) {
   const i = st.lockNotis.findIndex(x => x.key === n.key);
@@ -1095,7 +1100,7 @@ function newsHome() {
   st.newNews = 0;
   const el = makeView("portal",
     `<div class="ptop"><div class="urlrow">${BACK}<div class="urlbar">${svg("lock")}<span>${esc(N.url || "")}</span></div></div>` +
-    `<div class="psearch"><span class="logo">${esc(N.portal || "뉴스")}</span><form><input placeholder="검색어를 입력하세요" enterkeyhint="search"><button>검색</button></form></div>` +
+    `<div class="psearch"><span class="logo" aria-label="${esc(N.portal || "뉴스")}">N</span><form><input placeholder="검색어를 입력하세요" enterkeyhint="search"><button>검색</button></form></div>` +
     `<div class="ptabs"><button class="on">뉴스</button><button>연예</button><button>스포츠</button><button>경제</button><button>날씨</button></div></div>` +
     `<div class="scroll nbody"></div>`, { light: true });
   const entry = { el, light: true, id: "news" };
@@ -1392,8 +1397,10 @@ function runEvent(ev) {
       break;
     case "news": {
       const a = st.articles.find(x => x.id === ev.id); if (!a) break;
-      a.hidden = false; a.revealedAt = Date.now(); a.fresh = true; st.newNews++;
-      notify({ key: "news:" + a.id, app: "news", title: a.breaking ? `[속보] ${a.press || ""}` : (a.press || appName("news")), text: a.title, open: () => openArticle(a) });
+      if (a.hidden) { a.hidden = false; a.revealedAt = Date.now(); a.fresh = true; }   // 숨겨 둔 기사면 공개
+      st.newNews++;
+      notify({ key: "news:" + a.id, app: "news", important: !!a.breaking,
+        title: a.breaking ? `[속보] ${a.press || ""}` : (a.press || appName("news")), text: a.title, open: () => openArticle(a) });
       update(); break;
     }
     case "notice": {
