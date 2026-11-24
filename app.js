@@ -827,12 +827,13 @@ function showAlert(ev) {
     `<div class="alertbox" role="alertdialog"><div class="hd">${svg("alert")}<div><b>${esc(level)}</b><small>${esc(ampm(now()))}</small></div></div>` +
     `<div class="bd">${esc(ev.text)}</div><div class="ft"><button>확인</button></div></div>`;
   overlayEl.hidden = false;
+  pauseTimeline();
   arm();
   st.stopSiren && st.stopSiren();
   st.stopSiren = siren(ev.sound === false ? 0 : (ev.sec || 6));
   vibrate([500, 200, 500, 200, 500, 200, 800]);
   screenEl.classList.remove("shake"); void screenEl.offsetWidth; screenEl.classList.add("shake");
-  $("button", overlayEl).onclick = () => { overlayEl.hidden = true; st.stopSiren && st.stopSiren(); st.stopSiren = null; };
+  $("button", overlayEl).onclick = () => { overlayEl.hidden = true; st.stopSiren && st.stopSiren(); st.stopSiren = null; resumeTimeline(); };
   if (st.locked) addLockNoti({ key: "chat:alert", app: "alert", title: level, text: ev.text, count: c.unread, open: () => openChat(c) });
   update();
 }
@@ -1388,7 +1389,10 @@ let tlStart = 0;
 const CALL_GAP_MS = 8000;
 const toSec = v => typeof v === "string" && v.includes(":") ? v.split(":").reduce((a, x) => a * 60 + Number(x), 0) : Number(v) || 0;
 const timeline = (S.timeline || []).map(e => ({ ...e, at: toSec(e.at) })).sort((a, b) => a.at - b.at);
-const elapsed = () => (Date.now() - tlStart) / 1000 * SPEED;
+// 재난문자 창이 떠 있는 동안은 이야기 시간이 멈춤 (창 뒤에 가려진 채로 속보·문자가 지나가지 않게)
+const elapsed = () => ((st.pausedAt || Date.now()) - tlStart) / 1000 * SPEED;
+function pauseTimeline() { if (st.started && !st.pausedAt) st.pausedAt = Date.now(); }
+function resumeTimeline() { if (st.pausedAt) { tlStart += Date.now() - st.pausedAt; st.pausedAt = 0; } }
 
 function newChat(ev) {
   const c = { id: ev.chat, app: ev.app || "talk", title: ev.title || ev.from || ev.chat, group: !!ev.group,
