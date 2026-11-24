@@ -752,9 +752,9 @@ window.STORY = {
   timeline: [
     // 0분대: 깨자마자 재난문자, 친구·엄마 문자, 엄마 전화
     { at: "0:06", type: "alert", text: "[국가비상대책본부] 02:50 수도권 전역 공습경보 발령. 즉시 가까운 지하 대피시설로 대피하십시오. 엘리베이터 사용 금지." },
-    { at: "0:12", type: "message", chat: "minji", from: "김민지", text: "야 너 어디야" },
-    { at: "0:15", type: "message", chat: "minji", from: "김민지", text: "ㅁㅊ 이거 뭐야" },
-    { at: "0:17", type: "news", id: "a1" },            // 새날일보 첫 속보 알림 (눌러서 기사 보기)
+    { at: "0:11", type: "news", id: "a1" },            // 새날일보 첫 속보 알림 (눌러서 기사 보기, 6초 유지)
+    { at: "0:18", type: "message", chat: "minji", from: "김민지", text: "야 너 어디야" },
+    { at: "0:21", type: "message", chat: "minji", from: "김민지", text: "ㅁㅊ 이거 뭐야" },
     { at: "0:26", type: "message", chat: "mom", from: "엄마", text: "태린아 제발" },
     { at: "0:32", type: "call", from: "엄마", ring: 12000,
       lines: ["태린아!! 태린아, 엄마야", { me: "엄마, 나 괜찮아" }, "아이고… 다행이다… 지금 어디야", { me: "자취방. 밖에 사이렌 계속 울려" },
