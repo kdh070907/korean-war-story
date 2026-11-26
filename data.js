@@ -436,13 +436,14 @@ window.STORY = {
         { from: "태호", text: "나 이제 잘게 사랑해", time: "21:58" },
         { me: true, text: "응 나도 사랑해", time: "21:59", read: true },
         { day: "11월 4일 수요일" },
-        { me: true, text: "태호야", time: "02:45" },
-        { me: true, text: "상황 어때", time: "02:45" },
-        { me: true, text: "연락 가능해??", time: "02:45" },
-        { me: true, text: "제발 무사해줘...제발", time: "02:45" },
-        { me: true, text: "너무 보고싶어", time: "02:46" },
-        { me: true, text: "기다릴게 태호야 제발....", time: "02:46" },
-        { me: true, text: "꼭 우리 봐야해", time: "02:46" }
+        // 2시 20분쯤 태호에게 보낸 게 마지막 — 그 뒤 태린은 폰을 잃어버림
+        { me: true, text: "태호야", time: "02:20" },
+        { me: true, text: "상황 어때", time: "02:20" },
+        { me: true, text: "연락 가능해??", time: "02:20" },
+        { me: true, text: "제발 무사해줘...제발", time: "02:20" },
+        { me: true, text: "너무 보고싶어", time: "02:21" },
+        { me: true, text: "기다릴게 태호야 제발....", time: "02:21" },
+        { me: true, text: "꼭 우리 봐야해", time: "02:21" }
       ],
       replies: []
     },
