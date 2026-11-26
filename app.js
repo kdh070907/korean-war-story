@@ -70,7 +70,6 @@ const ICON = {
   flash: '<path d="M8 3h8v4l-2 3v11h-4V10L8 7z"/><path d="M12 13v2"/>',
   search: '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>',
   mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M4 4l16 16"/>',
-  talk: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
   keypad: '<circle cx="6" cy="6" r="1"/><circle cx="12" cy="6" r="1"/><circle cx="18" cy="6" r="1"/><circle cx="6" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="18" cy="12" r="1"/><circle cx="6" cy="18" r="1"/><circle cx="12" cy="18" r="1"/><circle cx="18" cy="18" r="1"/>',
   speaker: '<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
@@ -969,17 +968,14 @@ const callTimer = since => { const s = Math.floor((Date.now() - since) / 1000); 
 function callScreen({ who, script, incoming = false }) {
   st.inCall = true;
   const disp = who.name || who.number;
-  // 주운 폰 컨셉: silent/spoke 대사가 있는 전화는 '말하기' 버튼을 누르는지에 따라 흘러감
+  // 주운 폰 컨셉: silent/spoke 대사가 있는 전화는 say(내가 하는 말)가 있으면 말하고, 없으면 침묵
   const interactive = !!(script.silent || script.spoke);
-  const SAY = CFG.callSay || [{ label: "여보세요?", text: "여보세요…?" }];
   const el = makeView("callscr",
     `<div class="st"></div><div class="nm">${esc(disp)}</div>` +
     `<div class="no">${esc(who.name ? (who.number || "") : "저장되지 않은 번호")}</div>` +
     `${who.name ? avatar(disp, "lg") : iconAv("user", "#5b6475", "lg")}<div class="sub"></div>` +
     `<div class="cgrid">${[["mic", "소리 끔"], ["keypad", "키패드"], ["speaker", "스피커"], ["plus", "통화 추가"], ["video", "영상 통화"], ["user", "연락처"]]
       .map(([i, l]) => `<button><i>${svg(i)}</i><span>${l}</span></button>`).join("")}</div>` +
-    (interactive ? `<div class="say" hidden><small>${esc(CFG.callSayHint || "말하기")}</small><div>${SAY.map((x, i) =>
-      `<button data-i="${i}">${svg("talk")}<span>${esc(x.label)}</span></button>`).join("")}</div></div>` : "") +
     `<div class="btns"></div>`);
   $$(".cgrid button", el).forEach(b => { b.onclick = () => b.classList.toggle("on"); });
   const tok = { dead: false };
@@ -1017,36 +1013,18 @@ function callScreen({ who, script, incoming = false }) {
   };
   btns.innerHTML = `<button class="callbtn end" aria-label="통화 종료">${svg("phone")}</button>`;
   $(".callbtn", btns).onclick = () => finish();
-  const sayEl = $(".say", el);
-  $$(".say button", el).forEach(b => {
-    b.onclick = () => {
-      if (said || finished || !connectedAt) return;
-      said = SAY[+b.dataset.i].text;
-      sayEl.hidden = true;
-      line(said, "me");
-    };
-  });
-  const SPOKE = {};
-  const iwait = async ms => {                          // 말하기를 누르면 바로 끊고 넘어가는 기다림
-    const end = Date.now() + ms;
-    for (;;) {
-      if (tok.dead) throw tok;
-      if (said) throw SPOKE;
-      const left = end - Date.now();
-      if (left <= 0) return;
-      await sleep(Math.min(120, left));
+  async function talk() {                              // 연결된 뒤: 상대가 말함 → 내가 말하거나(say) 침묵 → 반응
+    await speakLines(script.lines, line, wait);
+    if (script.say) {                                  // 목소리를 들으면 "누구세요?"
+      await wait(1200);
+      said = script.say; line(said, "me");
+      await wait(900 + said.length * 50);
+      await speakLines(script.spoke, line, wait);
+    } else {                                           // 아무 말도 안 하면 "왜 아무 말도 안 해…"
+      await wait(2600);
+      await speakLines(script.silent, line, wait);
+      await wait(900);
     }
-  };
-  async function talk() {                              // 연결된 뒤: 상대가 말함 → (말하기?) → 반응
-    sayEl.hidden = false;
-    try {
-      await speakLines(script.lines, line, iwait);
-      await iwait(2600);
-      await speakLines(script.silent, line, iwait);   // 아무 말도 안 하면 "왜 아무 말도 안 해…"
-      await iwait(900);
-    } catch (e) { if (e !== SPOKE) throw e; }
-    sayEl.hidden = true;
-    if (said) { await wait(1000); await speakLines(script.spoke, line, wait); }   // 목소리를 들으면 "누구세요?"
     await wait(800);
     line("상대방이 통화를 끊었습니다.", "sys");
     await wait(1000);
@@ -1507,7 +1485,7 @@ function runEvent(ev) {
       const src = K || ev;
       const onMiss = K ? (ev.ifMissed && K.missedText ? { ...ev.ifMissed, text: K.missedText } : null) : ev.ifMissed;
       incomingCall({ who: resolve(ev.from || ev.number), ring: ev.ring, onMiss,
-        script: { lines: src.lines || [], silent: src.silent, spoke: src.spoke, onEnd: o => callOutcome(K ? { ...ev, after: K.after || {} } : ev, o) } });
+        script: { lines: src.lines || [], say: src.say, silent: src.silent, spoke: src.spoke, onEnd: o => callOutcome(K ? { ...ev, after: K.after || {} } : ev, o) } });
       break;
     }
     case "news": {
