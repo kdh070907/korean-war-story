@@ -70,6 +70,7 @@ const ICON = {
   flash: '<path d="M8 3h8v4l-2 3v11h-4V10L8 7z"/><path d="M12 13v2"/>',
   search: '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>',
   mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M4 4l16 16"/>',
+  talk: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
   keypad: '<circle cx="6" cy="6" r="1"/><circle cx="12" cy="6" r="1"/><circle cx="18" cy="6" r="1"/><circle cx="6" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="18" cy="12" r="1"/><circle cx="6" cy="18" r="1"/><circle cx="12" cy="18" r="1"/><circle cx="18" cy="18" r="1"/>',
   speaker: '<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
@@ -383,7 +384,7 @@ function wallpaper(el) {
 function introView() {
   const I = CFG.intro || {};
   const el = makeView("intro",
-    `<h1>${esc(I.title || "")}</h1><p>${br(I.text || "")}</p>${I.sound ? `<p class="snd">${esc(I.sound)}</p>` : ""}` +
+    `<h1>${esc(I.title || "")}</h1>${I.lead ? `<p class="lead">${br(I.lead)}</p>` : ""}<p>${br(I.text || "")}</p>${I.sound ? `<p class="snd">${esc(I.sound)}</p>` : ""}` +
     `<button class="go">${esc(I.button || "시작")}</button>`);
   $(".go", el).onclick = start;
   return { el, noNav: true, intro: true };
@@ -672,6 +673,7 @@ function rememberFacts(c, text) {
 const YES_RE = /^(응|ㅇㅇ|ㅇ|어|웅|엉|ㅇㅋ|오키|맞아|그래|넹|네|넵|응응|ㅇㅇㅇ|어어|웅웅|맞음)[.!~ㅠㅜ]*$/;
 const NO_RE = /^(아니|ㄴㄴ|아니야|아닌데|노|놉|ㄴ|아냐|아님|아니요)[.!~ㅠㅜ]*$/;
 const CONTEXT = [                                      // 상대 질문에 이 말이 있으면 → [응일 때, 아니일 때]
+  { q: /말 ?못 ?하는|말을 ?못/, yes: "cantTalk", no: "canTalk" },   // 전화에서 아무 말도 안 했을 때
   { q: /자취방|집이|집에|방이|방에/, yes: "imHome", no: "askBackWhere" },
   { q: /혼자/, yes: "alone", no: "withSomeone" },
   { q: /괜찮|다친|무사/, yes: "fine", no: "hurt" },
@@ -715,6 +717,28 @@ function pickReply(c, text) {
     c.ruleIdx[key] = i + 1;
     return list[i % list.length];
   };
+  const R = (S.stranger || {}).reveal;
+  if (!c.stranger && c.strangerTalk && R && ruleHit(R, text)) {   // 문자로 "이 폰 주웠어요" 라고 밝힘
+    c.stranger = true;
+    const v = c.strangerTalk.reveal || R.replies;
+    return v && v.length ? v[0] : null;
+  }
+  if (c.stranger) {                                   // 통화로 목소리를 들어서 폰 주인이 아닌 걸 아는 사람
+    const X = c.strangerTalk || {}, G = S.stranger || {};
+    for (const r of G.rules || []) {
+      const hit = (r.like || []).some(n => { const g = RULES.find(x => x.name === n); return g && ruleHit(g, text); }) ||
+                  ((r.match || r.exact || r.re) && ruleHit(r, text));
+      if (!hit) continue;
+      const mine = (X.rules || []).find(x => x.match === r.name);
+      const v = take("s:" + r.name, variantsOf(mine || r));
+      if (v) return v;
+    }
+    const story = X.replies || [];
+    c.sSent = c.sSent || 0;
+    if (c.sSent < story.length) return story[c.sSent++];
+    const fb = X.fallback || G.fallback || [];
+    return fb.length ? fb[Math.floor(Math.random() * fb.length)] : null;
+  }
   const own = c.replyRules || [];
   // 0) 짧은 대답이면 앞 질문에 맞춘 뜻으로
   const ctx = contextIntent(c, text);
@@ -773,6 +797,23 @@ function queueInChat(c, job) {
   c.flow = (c.flow || Promise.resolve()).then(job).catch(() => {}).then(() => { c.q--; });
 }
 function replyFlow(c, reps) { queueInChat(c, () => runReply(c, reps)); }
+/* 통화가 끝난 뒤: 말했으면 그 사람(들)은 폰 주인이 아닌 걸 알게 되고, 결과에 맞는 문자(after)가 옴 */
+function callOutcome(ev, outcome) {
+  const cs = [].concat(ev.chats || ev.chat || []).map(chatById).filter(Boolean);
+  if (outcome === "spoke") cs.forEach(c => { c.stranger = true; });
+  const msgs = (ev.after || {})[outcome] || [];
+  const c = cs[0];
+  if (!c || !msgs.length) return;
+  queueInChat(c, async () => {
+    await sleep(2500);
+    for (const m of msgs) {
+      if (st.dead || st.off) return;
+      const msg = typeof m === "string" ? { text: m } : m;
+      receive(c, { from: msg.from || ev.from || c.title, text: msg.text });
+      await sleep(1400 + String(msg.text).length * 45);
+    }
+  });
+}
 async function runReply(c, reps) {
   await sleep(600 + Math.random() * 700);
   if (st.off || st.down) return;
@@ -909,7 +950,8 @@ function call(target) {
   let sc = scripts[who.name] || scripts[who.number] || scripts[digits(who.number)];
   const n = st.callCount[key] = (st.callCount[key] || 0) + 1;
   if (sc && n > 1 && sc.again) sc = sc.again;
-  callScreen({ who, script: sc || {} });
+  const script = sc ? { ...sc, onEnd: o => callOutcome({ ...sc, from: who.name }, o) } : {};
+  callScreen({ who, script });
 }
 
 /* 대사 재생 — 발신 화면과 수신 배너가 함께 씀 */
@@ -927,16 +969,21 @@ const callTimer = since => { const s = Math.floor((Date.now() - since) / 1000); 
 function callScreen({ who, script, incoming = false }) {
   st.inCall = true;
   const disp = who.name || who.number;
+  // 주운 폰 컨셉: silent/spoke 대사가 있는 전화는 '말하기' 버튼을 누르는지에 따라 흘러감
+  const interactive = !!(script.silent || script.spoke);
+  const SAY = CFG.callSay || [{ label: "여보세요?", text: "여보세요…?" }];
   const el = makeView("callscr",
     `<div class="st"></div><div class="nm">${esc(disp)}</div>` +
     `<div class="no">${esc(who.name ? (who.number || "") : "저장되지 않은 번호")}</div>` +
     `${who.name ? avatar(disp, "lg") : iconAv("user", "#5b6475", "lg")}<div class="sub"></div>` +
     `<div class="cgrid">${[["mic", "소리 끔"], ["keypad", "키패드"], ["speaker", "스피커"], ["plus", "통화 추가"], ["video", "영상 통화"], ["user", "연락처"]]
       .map(([i, l]) => `<button><i>${svg(i)}</i><span>${l}</span></button>`).join("")}</div>` +
+    (interactive ? `<div class="say" hidden><small>${esc(CFG.callSayHint || "말하기")}</small><div>${SAY.map((x, i) =>
+      `<button data-i="${i}">${svg("talk")}<span>${esc(x.label)}</span></button>`).join("")}</div></div>` : "") +
     `<div class="btns"></div>`);
   $$(".cgrid button", el).forEach(b => { b.onclick = () => b.classList.toggle("on"); });
   const tok = { dead: false };
-  let stopRing = null, timerInt = null, connectedAt = null, finished = false;
+  let stopRing = null, timerInt = null, connectedAt = null, finished = false, said = null;
   const entry = {
     el, call: true, noNav: true,
     onClose: () => { tok.dead = true; stopRing && stopRing(); clearInterval(timerInt); st.inCall = false; st.callEndedAt = Date.now(); st.dropCall = null; }
@@ -949,9 +996,12 @@ function callScreen({ who, script, incoming = false }) {
     sub.insertAdjacentHTML("beforeend", `<div class="ln ${cls}">${esc(text)}</div>`);
     while (sub.children.length > 5) sub.firstElementChild.remove();
   };
-  function finish() {
+  // outcome: "spoke"(말함) · "silent"(끝까지 말 안 함) · "hungup"(말 안 하고 내가 끊음)
+  function finish(outcome) {
     if (finished) return;
     finished = true; tok.dead = true;
+    const o = outcome || (said ? "spoke" : "hungup");
+    if (connectedAt && script.onEnd) setTimeout(() => script.onEnd(o), 0);
     stopRing && stopRing(); stopRing = null; clearInterval(timerInt);
     st.calls.unshift({ name: disp, dir: incoming ? "in" : "out", time: hhmm(now()), length: connectedAt ? durText(Date.now() - connectedAt) : "" });
     stEl.textContent = "통화 종료"; btns.innerHTML = "";
@@ -963,10 +1013,45 @@ function callScreen({ who, script, incoming = false }) {
     if (finished) return;
     tok.dead = true; stopRing && stopRing(); stopRing = null; clearInterval(timerInt);
     line(CFG.callDropped || "통화가 끊겼습니다.", "sys"); errTone();
-    setTimeout(finish, 1500);
+    setTimeout(() => finish(said ? "spoke" : "silent"), 1500);
   };
   btns.innerHTML = `<button class="callbtn end" aria-label="통화 종료">${svg("phone")}</button>`;
-  $(".callbtn", btns).onclick = finish;
+  $(".callbtn", btns).onclick = () => finish();
+  const sayEl = $(".say", el);
+  $$(".say button", el).forEach(b => {
+    b.onclick = () => {
+      if (said || finished || !connectedAt) return;
+      said = SAY[+b.dataset.i].text;
+      sayEl.hidden = true;
+      line(said, "me");
+    };
+  });
+  const SPOKE = {};
+  const iwait = async ms => {                          // 말하기를 누르면 바로 끊고 넘어가는 기다림
+    const end = Date.now() + ms;
+    for (;;) {
+      if (tok.dead) throw tok;
+      if (said) throw SPOKE;
+      const left = end - Date.now();
+      if (left <= 0) return;
+      await sleep(Math.min(120, left));
+    }
+  };
+  async function talk() {                              // 연결된 뒤: 상대가 말함 → (말하기?) → 반응
+    sayEl.hidden = false;
+    try {
+      await speakLines(script.lines, line, iwait);
+      await iwait(2600);
+      await speakLines(script.silent, line, iwait);   // 아무 말도 안 하면 "왜 아무 말도 안 해…"
+      await iwait(900);
+    } catch (e) { if (e !== SPOKE) throw e; }
+    sayEl.hidden = true;
+    if (said) { await wait(1000); await speakLines(script.spoke, line, wait); }   // 목소리를 들으면 "누구세요?"
+    await wait(800);
+    line("상대방이 통화를 끊었습니다.", "sys");
+    await wait(1000);
+    finish(said ? "spoke" : "silent");
+  }
   const startTimer = () => {
     connectedAt = Date.now();
     stEl.textContent = callTimer(connectedAt);
@@ -975,6 +1060,7 @@ function callScreen({ who, script, incoming = false }) {
   async function run() {
     if (incoming) {                                   // 받은 전화: 바로 통화 시작
       startTimer();
+      if (interactive) return talk();
       await speakLines(script.lines, line, wait);
       await wait(800);
       line("상대방이 통화를 끊었습니다.", "sys");
@@ -995,6 +1081,7 @@ function callScreen({ who, script, incoming = false }) {
       await wait(3500); return finish();
     }
     startTimer();
+    if (interactive) return talk();
     await speakLines(script.lines, line, wait);
     await wait(1500);
     finish();
@@ -1405,15 +1492,24 @@ function runEvent(ev) {
   switch (ev.type) {
     case "message": {
       const c = chatById(ev.chat) || newChat(ev);
-      const msg = { from: ev.from || c.title, text: ev.text };
+      const text = c.stranger && "strangerText" in ev ? ev.strangerText : ev.text;   // 통화로 목소리를 들은 사람은 다르게
+      if (!text) break;
+      const msg = { from: ev.from || c.title, text };
       if (c.q) queueInChat(c, () => sleep(900).then(() => receive(c, msg)));   // 그 방에서 답하는 중이면 끝난 뒤에
       else receive(c, msg);
       break;
     }
     case "alert": showAlert(ev); break;
-    case "call":
-      incomingCall({ who: resolve(ev.from || ev.number), script: { lines: ev.lines || [] }, ring: ev.ring, onMiss: ev.ifMissed });
+    case "call": {
+      // 이미 폰 주인이 아닌 걸 아는 사람이면 known 대사(없으면 stranger.call 공통 대사)
+      const known = [].concat(ev.chats || ev.chat || []).some(id => { const c = chatById(id); return c && c.stranger; });
+      const K = known ? (ev.known || (S.stranger || {}).call) : null;
+      const src = K || ev;
+      const onMiss = K ? (ev.ifMissed && K.missedText ? { ...ev.ifMissed, text: K.missedText } : null) : ev.ifMissed;
+      incomingCall({ who: resolve(ev.from || ev.number), ring: ev.ring, onMiss,
+        script: { lines: src.lines || [], silent: src.silent, spoke: src.spoke, onEnd: o => callOutcome(K ? { ...ev, after: K.after || {} } : ev, o) } });
       break;
+    }
     case "news": {
       const a = st.articles.find(x => x.id === ev.id); if (!a) break;
       if (a.hidden) { a.hidden = false; a.revealedAt = Date.now(); a.fresh = true; }   // 숨겨 둔 기사면 공개
