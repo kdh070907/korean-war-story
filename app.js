@@ -799,7 +799,8 @@ function replyFlow(c, reps) { queueInChat(c, () => runReply(c, reps)); }
 /* 통화가 끝난 뒤: 말했으면 그 사람(들)은 폰 주인이 아닌 걸 알게 되고, 결과에 맞는 문자(after)가 옴 */
 function callOutcome(ev, outcome) {
   const cs = [].concat(ev.chats || ev.chat || []).map(chatById).filter(Boolean);
-  if (outcome === "spoke") cs.forEach(c => { c.stranger = true; });
+  // 목소리를 들었거나(spoke), 침묵을 듣고 의심한 사람(suspect)은 그때부터 폰 주인이 아닌 걸 앎
+  if (outcome === "spoke" || (ev.suspect && outcome === "silent")) cs.forEach(c => { c.stranger = true; });
   const msgs = (ev.after || {})[outcome] || [];
   const c = cs[0];
   if (!c || !msgs.length) return;
